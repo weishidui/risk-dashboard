@@ -49,6 +49,8 @@ public class AlertServiceImpl implements AlertService {
         CITY_COORDS.put("兰州", "103.73,36.03"); CITY_COORDS.put("沈阳", "123.43,41.80");
         CITY_COORDS.put("长春", "125.35,43.88"); CITY_COORDS.put("哈尔滨", "126.63,45.75");
         CITY_COORDS.put("石家庄", "114.48,38.03"); CITY_COORDS.put("太原", "112.53,37.87");
+        CITY_COORDS.put("天津", "117.19,39.12"); CITY_COORDS.put("香港", "114.17,22.28");
+        CITY_COORDS.put("澳门", "113.55,22.19");
     }
 
     @Override

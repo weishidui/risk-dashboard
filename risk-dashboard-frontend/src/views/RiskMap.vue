@@ -16,9 +16,13 @@
       <div v-if="!mapReady" class="map-loading">
         <i class="el-icon-loading"></i> 地图加载中...
       </div>
-      <div ref="mapChart" class="map-container" :class="{ 'no-interact': !mapInteractive || mapLocked }" v-show="mapReady"></div>
-      <div v-if="mapReady && !mapInteractive" class="map-loading-overlay">
-        <i class="el-icon-loading"></i> 加载中...
+      <div ref="mapChart" class="map-container" v-show="mapReady"></div>
+      <div v-if="mapReady" class="map-legend">
+        <div class="legend-title">{{ currentProvince ? '市级' : '省级' }}告警</div>
+        <div class="legend-row" v-for="lv in legendLevels" :key="lv.label">
+          <span class="legend-swatch" :style="{ background: lv.color }"></span>
+          <span class="legend-label">{{ lv.label }}</span>
+        </div>
       </div>
     </div>
 
@@ -70,7 +74,7 @@
 <script>
 import * as echarts from 'echarts'
 import { getCityRiskStat } from '@/api/alert'
-import { REFRESH_INTERVAL, CITY_COORDS, PROVINCE_CENTERS } from '@/utils/constants'
+import { CITY_COORDS, PROVINCE_CENTERS } from '@/utils/constants'
 
 export default {
   name: 'RiskMap',
@@ -80,33 +84,46 @@ export default {
       highRiskAlerts: [],
       highRiskTotal: 0,
       highRiskPage: 1,
-      timer: null,
       mapChart: null,
       mapReady: false,
-      mapInteractive: false,
-      mapLocked: false,
-      isRoaming: false,
       currentProvince: null,
       currentGbPrefix: null,
       provinceGeoJson: null,
       cityGeoJson: null,
       allAlertData: [],
-      refreshing: false
+      refreshing: false,
+      mutex: 1,
+      waitQ: [],
+      dataMax: 0
+    }
+  },
+  computed: {
+    legendLevels() {
+      const colors = this.currentProvince
+        ? ['#E8C0C0', '#D07070', '#8B0000']
+        : ['#3D1525', '#5A2035', '#7D2D4A', '#A53D5E', '#CD4D70']
+      const n = colors.length
+      const mx = Math.max(this.dataMax, 1)
+      const step = Math.max(1, Math.ceil(mx / n))
+      const levels = []
+      for (let i = 0; i < n; i++) {
+        const lo = i * step + 1
+        const hi = (i + 1) * step
+        if (lo > mx) break
+        const label = hi >= mx ? `≥${lo}` : lo === hi ? `${lo}` : `${lo}-${hi}`
+        levels.push({ label, color: colors[i] })
+      }
+      return levels
     }
   },
   mounted() {
     this.initMaps()
-    this.timer = setInterval(() => this.loadData(), REFRESH_INTERVAL * 2)
-    this._onThemeChange = () => {
-      this._mapRendered = false
-      if (this.allAlertData.length) this.$nextTick(() => this.renderMap(this.allAlertData))
-    }
-    document.addEventListener('theme-changed', this._onThemeChange)
+    this._onTheme = () => { this._mapRendered = false; if (this.allAlertData.length) this.$nextTick(() => this.renderMap(this.allAlertData)) }
+    document.addEventListener('theme-changed', this._onTheme)
   },
   beforeDestroy() {
-    clearInterval(this.timer)
     if (this.mapChart) this.mapChart.dispose()
-    document.removeEventListener('theme-changed', this._onThemeChange)
+    document.removeEventListener('theme-changed', this._onTheme)
   },
   methods: {
     async initMaps() {
@@ -133,26 +150,37 @@ export default {
           const raw = statRes.data || []
           this.allAlertData = raw
           this.cityRanks = this.buildCityRanks(raw)
-          if (!this.isRoaming) {
-            this.mapLocked = true
-            await new Promise(r => setTimeout(r, 250))
-            this.$nextTick(() => this.renderMap(raw))
-            setTimeout(() => { this.mapLocked = false }, 250)
-          }
+          await this.acquire()
+          this.renderMap(raw)
+          this.$nextTick(() => this.release())
         }
         this.loadHighRiskDetails()
-      } catch (e) { /* ignore */ }
+      } catch (e) { this.release() }
+    },
+
+    acquire() {
+      if (this.mutex === 1) { this.mutex = 0; return Promise.resolve() }
+      return new Promise(r => this.waitQ.push(r))
+    },
+
+    release() {
+      if (this.waitQ.length) { this.waitQ.shift()() }
+      else { this.mutex = 1 }
     },
 
     buildCityRanks(raw) {
       if (this.currentProvince && this.currentGbPrefix) {
         const prefix = this.currentGbPrefix
-        return raw
-          .filter(d => {
-            const gb = this.getCityGb(d.city)
-            return gb && String(gb).startsWith(prefix)
-          })
-          .map(d => ({ city: d.city, count: d.count }))
+        const cityCount = {}
+        raw.forEach(d => {
+          const gb = this.getCityGb(d.city)
+          if (gb && String(gb).startsWith(prefix)) {
+            const name = this.resolveGeoName(d.city) || d.city
+            cityCount[name] = (cityCount[name] || 0) + (d.count || 1)
+          }
+        })
+        return Object.entries(cityCount)
+          .map(([city, count]) => ({ city, count }))
           .sort((a, b) => b.count - a.count)
       }
       const provCount = {}
@@ -172,11 +200,12 @@ export default {
         if (res.code === 200 && res.data) {
           this.allAlertData = res.data
           this._mapRendered = false
-          this.$nextTick(() => this.renderMap(res.data))
+          await this.acquire()
+          this.$nextTick(() => { this.renderMap(res.data); this.$nextTick(() => this.release()) })
         }
         this.loadHighRiskDetails()
         this.$message.success('已刷新')
-      } catch (e) { /* ignore */ }
+      } catch (e) { this.release() }
       finally { this.refreshing = false }
     },
 
@@ -204,11 +233,10 @@ export default {
         alertFill: g('--map-alert-fill'), alertBorder: g('--map-alert-border'),
         tooltipBg: g('--map-tooltip-bg'), tooltipText: g('--map-tooltip-text'),
         overlay: g('--map-overlay'),
-        label: g('--color-text-secondary'), hoverFill: g('--color-bg-hover'),
-        scatter: 'rgba(217,74,74,0.85)', scatterBorder: '#fff',
-        red: '#D94A4A'
+        label: g('--color-text-secondary'), hoverFill: g('--color-bg-hover')
       }
     },
+
     renderMap(data) {
       const el = this.$refs.mapChart
       if (!el || !this.mapReady) return
@@ -223,6 +251,15 @@ export default {
       }
     },
 
+    colorFor(cnt) {
+      const levels = this.legendLevels
+      if (!levels.length) return '#333'
+      const n = this.currentProvince ? 3 : 5
+      const step = Math.max(1, Math.ceil(Math.max(this.dataMax, 1) / n))
+      const idx = Math.min(Math.floor((cnt - 1) / step), levels.length - 1)
+      return levels[idx].color
+    },
+
     renderProvinceView(data, isRefresh = false) {
       const m = this.mapColors()
       const provCount = {}
@@ -231,63 +268,48 @@ export default {
         provCount[prov] = (provCount[prov] || 0) + (d.count || 1)
       })
 
-      const scatterData = Object.entries(provCount).map(([name, cnt]) => {
-        const center = this.getProvinceCenter(name)
-        return { name, value: [...center, cnt], alertCount: cnt }
-      })
+      const provVals = Object.values(provCount)
+      this.dataMax = provVals.length ? Math.max(...provVals) : 0
+
+      const regions = Object.entries(provCount).map(([name, cnt]) => ({
+        name,
+        itemStyle: { areaColor: this.colorFor(cnt), borderColor: '#5A2828' },
+        _cnt: cnt
+      }))
+
+      const scatterData = Object.entries(provCount).map(([name, cnt]) => ({
+        name, value: [...this.getProvinceCenter(name), cnt]
+      }))
 
       if (isRefresh) {
-        this.mapChart.setOption({
-          series: [
-            { data: scatterData },
-            { data: scatterData.filter(d => d.value[2] > 2) }
-          ]
-        }, false)
+        this.mapChart.setOption({ geo: { regions } }, false)
         return
       }
 
       this.mapChart.setOption({
-        tooltip: {
-          trigger: 'item',
-          backgroundColor: m.tooltipBg, borderColor: m.geoBorder,
-          textStyle: { color: m.tooltipText, fontSize: 11 },
-          formatter: p => p.name ? `${p.name}<br/>告警: <b>${p.data.alertCount || p.value[2]}</b> 条` : ''
-        },
         geo: {
           map: 'china', roam: true, zoom: 1.2, center: [105, 36],
           itemStyle: { areaColor: m.geoFill, borderColor: m.geoBorder, borderWidth: 1 },
           emphasis: { itemStyle: { areaColor: m.hoverFill }, label: { color: m.tooltipText, show: true } },
-          regions: Object.keys(provCount).map(prov => ({
-            name: prov,
-            itemStyle: { areaColor: m.alertFill, borderColor: m.alertBorder }
-          }))
+          regions
         },
         series: [{
           type: 'scatter', coordinateSystem: 'geo',
           data: scatterData,
-          symbolSize: val => Math.min(Math.max(val[2] * 3, 14), 40),
-          itemStyle: {
-            color: 'rgba(217,74,74,0.85)',
-            borderColor: '#fff', borderWidth: 1,
-            shadowBlur: 8, shadowColor: 'rgba(217,74,74,0.4)'
-          },
-          label: { show: true, position: 'right', color: m.label, fontSize: 10, formatter: p => p.name },
-          emphasis: { itemStyle: { borderColor: '#fff', borderWidth: 2 } }
-        }, {
-          type: 'effectScatter', coordinateSystem: 'geo',
-          data: scatterData.filter(d => d.value[2] > 2),
-          symbolSize: 6, showEffectOn: 'render',
-          rippleEffect: { brushType: 'stroke', scale: 3, period: 3 },
-          itemStyle: { color: '#D94A4A' }, zlevel: 1
+          symbolSize: 10,
+          itemStyle: { color: '#D94A4A', opacity: 0.85 },
+          tooltip: { formatter: p => `${p.name}<br/>告警: <b>${p.value[2]}</b> 条` }
         }]
       })
+      this.mapChart.setOption({
+        tooltip: { trigger: 'item' }
+      }, false)
 
       this.mapChart.off('click')
       this.mapChart.on('click', params => {
         if (params.name && params.name !== '境界线') this.drillDown(params.name)
       })
-      this.bindRoamEvents()
-      this.mapInteractive = true
+      this.bindLock()
     },
 
     renderCityView(data, isRefresh = false) {
@@ -315,96 +337,72 @@ export default {
         }
       })
 
-      const scatterData = Object.entries(cityCount).map(([name, cnt]) => {
-        const coords = this.getCityCenter(name) || this.getProvinceCenter(name)
-        return { name, value: [...coords, cnt], alertCount: cnt }
-      })
+      const cityVals = Object.values(cityCount)
+      this.dataMax = cityVals.length ? Math.max(...cityVals) : 0
+
+      const regions = Object.entries(cityCount).map(([name, cnt]) => ({
+        name,
+        itemStyle: { areaColor: this.colorFor(cnt), borderColor: '#5A2828' },
+        _cnt: cnt
+      }))
+
+      const scatterData = Object.entries(cityCount).map(([name, cnt]) => ({
+        name, value: [...(this.getCityCenter(name) || this.getProvinceCenter(name)), cnt]
+      }))
 
       if (isRefresh) {
-        this.mapChart.setOption({
-          geo: {
-            regions: Object.keys(cityCount).map(city => ({
-              name: city,
-              itemStyle: { areaColor: m.alertFill, borderColor: m.alertBorder }
-            }))
-          },
-          series: [
-            { data: scatterData },
-            { data: scatterData.filter(d => d.value[2] > 1) }
-          ]
-        }, false)
+        this.mapChart.setOption({ geo: { regions } }, false)
         return
       }
 
       this.mapChart.setOption({
-        tooltip: {
-          trigger: 'item',
-          backgroundColor: m.tooltipBg, borderColor: m.geoBorder,
-          textStyle: { color: m.tooltipText, fontSize: 11 },
-          formatter: p => p.name ? `${p.name}<br/>告警: <b>${p.data.alertCount || p.value[2]}</b> 条` : ''
-        },
         geo: {
           map: mapName, roam: true, zoom: 1.0, center,
           itemStyle: { areaColor: m.geoFill, borderColor: m.geoBorder, borderWidth: 1 },
           emphasis: { itemStyle: { areaColor: m.hoverFill }, label: { color: m.tooltipText, show: true } },
-          regions: Object.keys(cityCount).map(city => ({
-            name: city,
-            itemStyle: { areaColor: m.alertFill, borderColor: m.alertBorder }
-          }))
+          regions
         },
         series: [{
           type: 'scatter', coordinateSystem: 'geo',
           data: scatterData,
-          symbolSize: val => Math.min(Math.max(val[2] * 5, 10), 42),
-          itemStyle: {
-            color: 'rgba(217,74,74,0.85)',
-            borderColor: '#fff', borderWidth: 1,
-            shadowBlur: 8, shadowColor: 'rgba(217,74,74,0.4)'
-          },
-          label: { show: true, position: 'right', color: m.label, fontSize: 9, formatter: p => p.name },
-          emphasis: { itemStyle: { borderColor: '#fff', borderWidth: 2 } }
-        }, {
-          type: 'effectScatter', coordinateSystem: 'geo',
-          data: scatterData.filter(d => d.value[2] > 1),
-          symbolSize: 6, showEffectOn: 'render',
-          rippleEffect: { brushType: 'stroke', scale: 3, period: 3 },
-          itemStyle: { color: '#D94A4A' }, zlevel: 1
+          symbolSize: val => Math.max(val[2] * 5, 12),
+          itemStyle: { color: '#fff', borderColor: '#C03030', borderWidth: 2, opacity: 0.95 },
+          label: { show: true, formatter: p => p.value[2], color: '#333', fontSize: 10, fontWeight: 'bold' }
         }]
       })
 
       this.mapChart.off('click')
-      this.bindRoamEvents()
-      this.mapInteractive = true
+      this.bindLock()
     },
 
-    bindRoamEvents() {
-      const el = this.mapChart.getDom()
-      if (!el) return
-      const start = () => { this.isRoaming = true }
-      el.addEventListener('mousedown', start)
-      el.addEventListener('touchstart', start)
-      el.addEventListener('wheel', start)
-      this.mapChart.off('georoam')
-      this.mapChart.on('georoam', () => {
-        this.isRoaming = false
-        clearTimeout(this._roamTimer)
-        this._roamTimer = setTimeout(() => this.loadData(), 300)
+    bindLock() {
+      this.mapChart.off('mousedown')
+      this.mapChart.on('mousedown', () => { this.mutex = 0 })
+      this.mapChart.getDom().addEventListener('wheel', () => {
+        this.mutex = 0
+        clearTimeout(this._wheelTimer)
+        this._wheelTimer = setTimeout(() => this.release(), 300)
       })
+      const up = () => { this.release() }
+      document.removeEventListener('mouseup', up)
+      document.addEventListener('mouseup', up)
     },
 
     drillDown(provinceName) {
-      this._mapRendered = false; this.mapInteractive = false; this._switchView()
+      this._mapRendered = false; this._switchView()
       if (!this.provinceGeoJson) return
       const prov = this.provinceGeoJson.features.find(f => f.properties.name === provinceName)
       if (!prov || !prov.properties.gb) return
       this.currentGbPrefix = String(prov.properties.gb).slice(0, 5)
       this.currentProvince = provinceName
+      this.cityRanks = this.buildCityRanks(this.allAlertData)
       this.$nextTick(() => this.renderMap(this.allAlertData))
     },
 
     backToChina() {
-      this._mapRendered = false; this.mapInteractive = false; this._switchView()
+      this._mapRendered = false; this._switchView()
       this.currentProvince = null; this.currentGbPrefix = null
+      this.cityRanks = this.buildCityRanks(this.allAlertData)
       this.$nextTick(() => this.renderMap(this.allAlertData))
     },
 
@@ -438,6 +436,8 @@ export default {
       if (f) return f
       f = this.cityGeoJson.features.find(x => x.properties.name === name + '市')
       if (f) return f
+      f = this.cityGeoJson.features.find(x => x.properties.name === name + '特别行政区')
+      if (f) return f
       if (name.endsWith('市')) {
         f = this.cityGeoJson.features.find(x => x.properties.name === name.slice(0, -1))
         if (f) return f
@@ -458,6 +458,8 @@ export default {
         if (prov) return prov.properties.name
       }
       if (['北京', '上海', '天津', '重庆'].includes(cityName)) return cityName + '市'
+      if (cityName === '香港') return '香港特别行政区'
+      if (cityName === '澳门') return '澳门特别行政区'
       return cityName
     },
 
@@ -547,27 +549,51 @@ export default {
   height: 460px;
 }
 
-.map-container.no-interact {
+.map-legend {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.55);
+  border-radius: 2px;
+  padding: 6px 8px;
+  z-index: 5;
   pointer-events: none;
 }
 
-.map-loading,
-.map-loading-overlay {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
+.legend-title {
+  font-size: 10px;
+  color: #9AACBF;
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 1px 0;
+}
+
+.legend-swatch {
+  width: 16px;
+  height: 10px;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  font-size: 9px;
+  color: #8899AA;
+}
+
+.map-loading {
+  height: 460px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
   gap: var(--space-2);
-}
-
-.map-loading { height: 460px; }
-
-.map-loading-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: var(--map-overlay);
-  z-index: 10;
 }
 
 .panel {

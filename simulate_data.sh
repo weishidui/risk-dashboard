@@ -229,6 +229,104 @@ call "alert" '{
   "alertTime": 1719734901000
 }' "写入告警: 中危/核验 (评分45)"
 
+# --- 场景6：直辖市测试 (北京/上海/天津/重庆) ---
+log "  场景6: 直辖市测试 — 北京、上海、天津、重庆"
+
+for city in "北京" "上海" "天津" "重庆"; do
+  case $city in
+    "北京") loc="116.40,39.90" ;;
+    "上海") loc="121.47,31.23" ;;
+    "天津") loc="117.19,39.12" ;;
+    "重庆") loc="106.55,29.57" ;;
+  esac
+  call "transaction" "{
+    \"transId\": \"TXN_CITY_${city}_001\",
+    \"userId\": \"USER_NORMAL_WANG\",
+    \"amount\": 5000.00,
+    \"timestamp\": 1719735000000,
+    \"city\": \"${city}\",
+    \"geoLocation\": \"${loc}\",
+    \"deviceId\": \"DEV_IPHONE_12\",
+    \"networkType\": \"5G\",
+    \"devScore\": 90
+  }" "写入交易: ${city} 消费 ¥5000"
+
+  call "alert" "{
+    \"alertId\": \"ALT_CITY_${city}_001\",
+    \"transId\": \"TXN_CITY_${city}_001\",
+    \"userId\": \"USER_NORMAL_WANG\",
+    \"hitRules\": \"地理偏离\",
+    \"amount\": 5000.00,
+    \"finalScore\": 40,
+    \"riskLevel\": \"中危\",
+    \"alertLoc\": \"${city}\",
+    \"geoLocation\": \"${loc}\",
+    \"networkType\": \"5G\",
+    \"devScore\": 90,
+    \"action\": \"VERIFY\",
+    \"alertTime\": 1719735001000
+  }" "写入告警: ${city} 中危/核验 (评分40)"
+done
+
+# --- 场景7：港澳特别行政区测试 ---
+log "  场景7: 港澳特别行政区测试 — 香港、澳门"
+
+call "transaction" '{
+  "transId": "TXN_HK_001",
+  "userId": "USER_RICH_LI",
+  "amount": 25000.00,
+  "timestamp": 1719735100000,
+  "city": "香港",
+  "geoLocation": "114.17,22.28",
+  "deviceId": "DEV_MACBOOK_PRO",
+  "networkType": "5G",
+  "devScore": 88
+}' "写入交易: 香港消费 ¥25000"
+
+call "alert" '{
+  "alertId": "ALT_HK_001",
+  "transId": "TXN_HK_001",
+  "userId": "USER_RICH_LI",
+  "hitRules": "金额突变",
+  "amount": 25000.00,
+  "finalScore": 50,
+  "riskLevel": "中危",
+  "alertLoc": "香港",
+  "geoLocation": "114.17,22.28",
+  "networkType": "5G",
+  "devScore": 88,
+  "action": "VERIFY",
+  "alertTime": 1719735101000
+}' "写入告警: 香港 中危/核验 (评分50)"
+
+call "transaction" '{
+  "transId": "TXN_MO_001",
+  "userId": "USER_RICH_LI",
+  "amount": 18000.00,
+  "timestamp": 1719735200000,
+  "city": "澳门",
+  "geoLocation": "113.55,22.19",
+  "deviceId": "DEV_MACBOOK_PRO",
+  "networkType": "4G",
+  "devScore": 85
+}' "写入交易: 澳门消费 ¥18000"
+
+call "alert" '{
+  "alertId": "ALT_MO_001",
+  "transId": "TXN_MO_001",
+  "userId": "USER_RICH_LI",
+  "hitRules": "地理偏离",
+  "amount": 18000.00,
+  "finalScore": 35,
+  "riskLevel": "中危",
+  "alertLoc": "澳门",
+  "geoLocation": "113.55,22.19",
+  "networkType": "4G",
+  "devScore": 85,
+  "action": "VERIFY",
+  "alertTime": 1719735201000
+}' "写入告警: 澳门 中危/核验 (评分35)"
+
 # ============================================================
 # 第三步：模拟指标聚合 (Spark Streaming 窗口聚合 → 前端大屏)
 # ============================================================
