@@ -74,7 +74,7 @@
 <script>
 import * as echarts from 'echarts'
 import { getCityRiskStat } from '@/api/alert'
-import { CITY_COORDS, PROVINCE_CENTERS } from '@/utils/constants'
+import { REFRESH_INTERVAL, CITY_COORDS, PROVINCE_CENTERS } from '@/utils/constants'
 
 export default {
   name: 'RiskMap',
@@ -118,10 +118,12 @@ export default {
   },
   mounted() {
     this.initMaps()
+    this.timer = setInterval(() => this.loadData(), REFRESH_INTERVAL * 2)
     this._onTheme = () => { this._mapRendered = false; if (this.allAlertData.length) this.$nextTick(() => this.renderMap(this.allAlertData)) }
     document.addEventListener('theme-changed', this._onTheme)
   },
   beforeDestroy() {
+    clearInterval(this.timer)
     if (this.mapChart) this.mapChart.dispose()
     document.removeEventListener('theme-changed', this._onTheme)
   },
@@ -282,7 +284,7 @@ export default {
       }))
 
       if (isRefresh) {
-        this.mapChart.setOption({ geo: { regions } }, false)
+        this.mapChart.setOption({ animation: false, series: [{ data: scatterData }] }, false)
         return
       }
 
@@ -351,7 +353,7 @@ export default {
       }))
 
       if (isRefresh) {
-        this.mapChart.setOption({ geo: { regions } }, false)
+        this.mapChart.setOption({ animation: false, series: [{ data: scatterData }] }, false)
         return
       }
 
@@ -365,11 +367,12 @@ export default {
         series: [{
           type: 'scatter', coordinateSystem: 'geo',
           data: scatterData,
-          symbolSize: val => Math.max(val[2] * 5, 12),
-          itemStyle: { color: '#fff', borderColor: '#C03030', borderWidth: 2, opacity: 0.95 },
-          label: { show: true, formatter: p => p.value[2], color: '#333', fontSize: 10, fontWeight: 'bold' }
+          symbolSize: 10,
+          itemStyle: { color: '#D94A4A', opacity: 0.85 },
+          tooltip: { formatter: p => `${p.name}<br/>告警: <b>${p.value[2]}</b> 条` }
         }]
       })
+      this.mapChart.setOption({ tooltip: { trigger: 'item' } }, false)
 
       this.mapChart.off('click')
       this.bindLock()
