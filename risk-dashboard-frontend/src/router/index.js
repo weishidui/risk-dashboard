@@ -48,6 +48,11 @@ const routes = [
     path: '/config', name: 'Config',
     component: () => import('@/views/SystemConfig.vue'),
     meta: { title: '系统配置' }
+  },
+  {
+    path: '/users', name: 'Users',
+    component: () => import('@/views/UserManage.vue'),
+    meta: { title: '账号管理' }
   }
 ]
 

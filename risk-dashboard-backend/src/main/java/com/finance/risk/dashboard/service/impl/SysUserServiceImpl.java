@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -68,5 +69,21 @@ public class SysUserServiceImpl implements SysUserService {
                         .role(user.getRole())
                         .build())
                 .build();
+    }
+
+    @Override
+    public List<SysUser> listUsers() {
+        return sysUserDao.listAll();
+    }
+
+    @Override
+    public boolean deleteUser(String username) {
+        if ("admin".equals(username)) throw new RuntimeException("不能删除默认管理员");
+        return sysUserDao.deleteByUsername(username) > 0;
+    }
+
+    @Override
+    public boolean resetPassword(String username, String newPassword) {
+        return sysUserDao.updatePassword(username, newPassword) > 0;
     }
 }

@@ -43,7 +43,7 @@ export const ROLE_LABELS = {
 export const ROLE_ROUTES = {
   [ROLES.TRADER]:  [],
   [ROLES.ANALYST]: ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis'],
-  [ROLES.ADMIN]:   ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis', '/config'],
+  [ROLES.ADMIN]:   ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis', '/config', '/users'],
   [ROLES.AUDITOR]: ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis', '/config']
 }
 

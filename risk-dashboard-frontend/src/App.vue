@@ -7,7 +7,7 @@
 
     <!-- 已登录：侧边栏 + 主内容区 -->
     <el-container v-else class="app-container">
-      <el-aside width="200px" class="sidebar">
+      <el-aside width="240px" class="sidebar">
         <div class="logo">
           <span>RISK MONITOR</span>
         </div>
@@ -42,6 +42,9 @@
           </el-menu-item>
           <el-menu-item v-if="canAccess('/config')" index="/config">
             <i class="el-icon-setting"></i><span>系统配置</span>
+          </el-menu-item>
+          <el-menu-item v-if="canAccess('/users')" index="/users">
+            <i class="el-icon-user"></i><span>账号管理</span>
           </el-menu-item>
         </el-menu>
 
@@ -132,6 +135,8 @@ export default {
 *::after {
   margin: 0; padding: 0; box-sizing: border-box;
 }
+
+html { font-size: 24px; }
 
 body {
   font-family: var(--font-body);
@@ -225,7 +230,7 @@ body {
 /* ===== Main Content ===== */
 .main-content {
   background: var(--color-bg-base);
-  padding: var(--space-4); overflow-y: auto;
+  padding: var(--space-4); overflow: hidden;
 }
 
 /* ===== Global Element UI Overrides ===== */

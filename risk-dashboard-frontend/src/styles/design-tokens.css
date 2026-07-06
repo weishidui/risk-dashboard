@@ -9,13 +9,13 @@
   --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
 
   /* Type Scale (compact) */
-  --text-xs: 11px;
-  --text-sm: 12px;
-  --text-base: 13px;
-  --text-lg: 14px;
-  --text-xl: 15px;
-  --text-2xl: 16px;
-  --text-3xl: 18px;
+  --text-xs: 16px;
+  --text-sm: 18px;
+  --text-base: 20px;
+  --text-lg: 21px;
+  --text-xl: 22px;
+  --text-2xl: 24px;
+  --text-3xl: 27px;
 
   /* ---- Background (flat, no gradient) ---- */
   --color-bg-deep: #0C1524;
@@ -49,15 +49,15 @@
   --color-border: #1C2B42;
   --color-border-light: #253652;
 
-  /* ---- Spacing (compact) ---- */
-  --space-1: 4px;
-  --space-2: 6px;
-  --space-3: 8px;
-  --space-4: 12px;
-  --space-5: 16px;
-  --space-6: 20px;
-  --space-8: 24px;
-  --space-10: 32px;
+  /* ---- Spacing ---- */
+  --space-1: 6px;
+  --space-2: 9px;
+  --space-3: 12px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --space-6: 30px;
+  --space-8: 36px;
+  --space-10: 48px;
 
   /* ---- Radius (sharp) ---- */
   --radius-sm: 2px;
@@ -70,7 +70,7 @@
   --color-sidebar-bg: var(--color-bg-deep);
   --color-sidebar-text: var(--color-text-secondary);
   --color-sidebar-text-active: var(--color-primary);
-  --sidebar-width: 200px;
+  --sidebar-width: 240px;
 
   /* ---- Map Colors ---- */
   --map-geo-fill: #162339;
