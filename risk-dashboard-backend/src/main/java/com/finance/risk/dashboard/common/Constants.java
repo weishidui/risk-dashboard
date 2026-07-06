@@ -70,6 +70,19 @@ public final class Constants {
     /** 最大分页大小 */
     public static final int MAX_PAGE_SIZE = 100;
 
+    // ==================== 认证接口路径 ====================
+    public static final String API_AUTH_PREFIX = "/api/auth";
+
+    // ==================== JWT ====================
+    public static final String JWT_SECRET = "risk-dashboard-jwt-secret-key-2026";
+    public static final long JWT_EXPIRATION_MS = 24 * 60 * 60 * 1000L;
+
+    // ==================== 角色定义 ====================
+    public static final String ROLE_TRADER  = "trader";
+    public static final String ROLE_ANALYST = "analyst";
+    public static final String ROLE_ADMIN   = "admin";
+    public static final String ROLE_AUDITOR = "auditor";
+
     // ==================== WebSocket ====================
     /** WebSocket 广播频道 - 实时告警 */
     public static final String WS_TOPIC_ALERT = "/topic/alert";

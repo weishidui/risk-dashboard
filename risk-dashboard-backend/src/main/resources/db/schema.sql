@@ -206,8 +206,21 @@ CREATE TABLE IF NOT EXISTS t_metrics (
 
 
 -- ----------------------------
--- 7. 演示数据 (仅 H2 开发环境，MySQL 不会执行因为已存在)
+-- 7. 系统用户表: sys_user
 -- ----------------------------
+CREATE TABLE IF NOT EXISTS sys_user (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username    VARCHAR(64)  NOT NULL,
+    password    VARCHAR(128) NOT NULL,
+    role        VARCHAR(32)  NOT NULL,
+    create_time TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX idx_su_username (username)
+);
+
+-- ----------------------------
+-- 8. 演示数据
+-- ----------------------------
+INSERT INTO sys_user (username, password, role) VALUES ('admin', 'admin123', 'admin');
 INSERT INTO risk_alert (alert_id, trans_id, user_id, hit_rules, amount, final_score,
     risk_level, city, alert_loc, status, counterparty_id, ip_address, is_new_device, is_new_counterparty)
 VALUES

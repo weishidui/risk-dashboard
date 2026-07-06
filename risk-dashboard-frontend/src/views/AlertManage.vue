@@ -70,21 +70,32 @@
           </template>
         </el-table-column>
         <el-table-column prop="alertLoc" label="城市" width="70" />
-        <el-table-column prop="handler" label="处理人" width="80" />
+        <el-table-column prop="handler" label="处理人" width="80">
+          <template slot-scope="{ row }">
+            <span :class="{ 'text-muted': !row.handler }">{{ row.handler || '—' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="时间" width="155" sortable />
         <el-table-column label="操作" width="160" fixed="right">
           <template slot-scope="{ row }">
-            <template v-if="row.status === 'pending'">
-              <el-button type="primary" size="mini" @click.stop="handleAction(row, 'processing')">受理</el-button>
+            <!-- 审计员：只读状态文字 -->
+            <template v-if="isAuditor">
+              <span class="text-muted">{{ statusLabel(row.status) }}</span>
             </template>
-            <template v-else-if="row.status === 'processing'">
-              <span class="action-inline">
-                <el-button type="success" size="mini" @click.stop="handleAction(row, 'verified')">放行</el-button>
-                <el-button type="danger" size="mini" @click.stop="handleAction(row, 'blocked')">拦截</el-button>
-              </span>
+            <!-- 其他角色：操作按钮 -->
+            <template v-else>
+              <template v-if="row.status === 'pending'">
+                <el-button type="primary" size="mini" @click.stop="handleAction(row, 'processing')">受理</el-button>
+              </template>
+              <template v-else-if="row.status === 'processing'">
+                <span class="action-inline">
+                  <el-button type="success" size="mini" @click.stop="handleAction(row, 'verified')">放行</el-button>
+                  <el-button type="danger" size="mini" @click.stop="handleAction(row, 'blocked')">拦截</el-button>
+                </span>
+              </template>
+              <el-button v-if="row.status === 'verified' || row.status === 'blocked'" type="info" size="mini" @click.stop="handleAction(row, 'closed')">关闭</el-button>
+              <span v-if="row.status === 'closed'" class="text-muted">已关闭</span>
             </template>
-            <el-button v-if="row.status === 'verified' || row.status === 'blocked'" type="info" size="mini" @click.stop="handleAction(row, 'closed')">关闭</el-button>
-            <span v-if="row.status === 'closed'" class="text-muted">已关闭</span>
           </template>
         </el-table-column>
       </el-table>
@@ -147,6 +158,9 @@ export default {
       remark: ''
     }
   },
+  computed: {
+    isAuditor() { return this.$store.getters.userRole === 'auditor' }
+  },
   mounted() { this.init() },
   methods: {
     async init() {
@@ -200,7 +214,7 @@ export default {
         const res = await updateAlertStatus(
           this.currentAlert.alertId,
           this.targetStatus,
-          'admin',
+          this.$store.getters.username || 'system',
           this.remark || ''
         )
         if (res.code === 200) {

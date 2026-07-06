@@ -83,7 +83,7 @@
 
 <script>
 import * as echarts from 'echarts'
-import { getCityRiskStat } from '@/api/alert'
+import { getCityRiskStat, getAlertList } from '@/api/alert'
 import { REFRESH_INTERVAL, CITY_COORDS, PROVINCE_CENTERS } from '@/utils/constants'
 
 function buildTooltip(p) {
@@ -231,10 +231,11 @@ export default {
 
     async loadHighRiskDetails() {
       try {
-        const res = await fetch(
-          `/api/alert/list?page=${this.highRiskPage}&pageSize=20`
-        ).then(r => r.json())
-        if (res.data) {
+        const res = await getAlertList({
+          page: this.highRiskPage,
+          pageSize: 20
+        })
+        if (res.code === 200 && res.data) {
           this.highRiskAlerts = (res.data.list || []).filter(
             a => a.riskLevel === '高危' || a.riskLevel === '极度危险'
           )

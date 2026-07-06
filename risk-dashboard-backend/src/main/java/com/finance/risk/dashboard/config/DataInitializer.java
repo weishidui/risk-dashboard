@@ -2,7 +2,9 @@ package com.finance.risk.dashboard.config;
 
 import com.finance.risk.dashboard.dao.AlertDao;
 import com.finance.risk.dashboard.dao.MetricsDao;
+import com.finance.risk.dashboard.dao.SysUserDao;
 import com.finance.risk.dashboard.dao.TransactionDao;
+import com.finance.risk.dashboard.entity.SysUser;
 import com.finance.risk.dashboard.entity.AlertResult;
 import com.finance.risk.dashboard.entity.MetricsSnapshot;
 import com.finance.risk.dashboard.entity.Transaction;
@@ -29,8 +31,21 @@ public class DataInitializer implements CommandLineRunner {
     @Resource
     private MetricsDao metricsDao;
 
+    @Resource
+    private SysUserDao sysUserDao;
+
     @Override
     public void run(String... args) {
+        try {
+            if (sysUserDao.findByUsername("admin") == null) {
+                sysUserDao.insert(SysUser.builder()
+                        .username("admin").password("admin123").role("admin").build());
+                log.info("默认管理员账号已创建: admin / admin123");
+            }
+        } catch (Exception e) {
+            log.warn("sys_user 表初始化跳过: {}", e.getMessage());
+        }
+
         int refreshed = alertDao.refreshTimestamps();
         log.info("时间戳刷新: {} 条历史告警", refreshed);
 
