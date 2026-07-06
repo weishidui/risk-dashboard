@@ -77,9 +77,9 @@ public interface AlertDao {
             "WHERE create_time > #{sinceTime} GROUP BY hit_rules ORDER BY cnt DESC")
     List<RuleCount> countByHitRule(@Param("sinceTime") String sinceTime);
 
-    @Select("SELECT alert_loc, COUNT(*) as cnt FROM risk_alert " +
+    @Select("SELECT alert_loc, risk_level, COUNT(*) as cnt FROM risk_alert " +
             "WHERE create_time > #{sinceTime} AND risk_level IN ('高危', '极度危险') AND alert_loc IS NOT NULL " +
-            "GROUP BY alert_loc ORDER BY cnt DESC LIMIT #{limit}")
+            "GROUP BY alert_loc, risk_level ORDER BY cnt DESC LIMIT #{limit}")
     List<CityAlertCount> countHighRiskByCity(@Param("sinceTime") String sinceTime,
                                               @Param("limit") int limit);
 
@@ -107,9 +107,12 @@ public interface AlertDao {
 
     class CityAlertCount {
         private String alertLoc;
+        private String riskLevel;
         private Long cnt;
         public String getAlertLoc() { return alertLoc; }
         public void setAlertLoc(String alertLoc) { this.alertLoc = alertLoc; }
+        public String getRiskLevel() { return riskLevel; }
+        public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
         public Long getCnt() { return cnt; }
         public void setCnt(Long cnt) { this.cnt = cnt; }
     }

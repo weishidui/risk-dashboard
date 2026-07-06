@@ -175,6 +175,7 @@ public class AlertServiceImpl implements AlertService {
             Map<String, Object> map = new HashMap<>();
             map.put("city", c.getAlertLoc());
             map.put("count", c.getCnt());
+            map.put("riskLevel", c.getRiskLevel());
             String coords = CITY_COORDS.getOrDefault(c.getAlertLoc(), "116.40,39.90");
             String[] parts = coords.split(",");
             if (parts.length == 2) {

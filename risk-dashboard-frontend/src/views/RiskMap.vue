@@ -23,6 +23,16 @@
           <span class="legend-swatch" :style="{ background: lv.color }"></span>
           <span class="legend-label">{{ lv.label }}</span>
         </div>
+        <div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.1);padding-top:4px;">
+          <div class="legend-row">
+            <span class="legend-swatch" style="background:#F97316;"></span>
+            <span class="legend-label">高危</span>
+          </div>
+          <div class="legend-row">
+            <span class="legend-swatch" style="background:#DC2626;"></span>
+            <span class="legend-label">极度危险</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -75,6 +85,14 @@
 import * as echarts from 'echarts'
 import { getCityRiskStat } from '@/api/alert'
 import { REFRESH_INTERVAL, CITY_COORDS, PROVINCE_CENTERS } from '@/utils/constants'
+
+function buildTooltip(p) {
+  const d = p.data || {}
+  let html = `${p.name || ''}`
+  if (d.highCount > 0) html += `<br/><b style="color:#F97316;">高危</b>: ${d.highCount} 条`
+  if (d.criticalCount > 0) html += `<br/><b style="color:#DC2626;">极度危险</b>: ${d.criticalCount} 条`
+  return html
+}
 
 export default {
   name: 'RiskMap',
@@ -266,24 +284,39 @@ export default {
 
     renderProvinceView(data, isRefresh = false) {
       const m = this.mapColors()
-      const provCount = {}
+      const provTotal = {}
+      const provHigh = {}
+      const provCritical = {}
       data.forEach(d => {
         const prov = this.guessProvince(d.city) || d.city || '未知'
-        provCount[prov] = (provCount[prov] || 0) + (d.count || 1)
+        provTotal[prov] = (provTotal[prov] || 0) + (d.count || 1)
+        if (d.riskLevel === '极度危险') {
+          provCritical[prov] = (provCritical[prov] || 0) + (d.count || 1)
+        } else {
+          provHigh[prov] = (provHigh[prov] || 0) + (d.count || 1)
+        }
       })
 
-      const provVals = Object.values(provCount)
+      const provVals = Object.values(provTotal)
       this.dataMax = provVals.length ? Math.max(...provVals) : 0
 
-      const regions = Object.entries(provCount).map(([name, cnt]) => ({
+      const regions = Object.entries(provTotal).map(([name, cnt]) => ({
         name,
         itemStyle: { areaColor: this.colorFor(cnt), borderColor: '#5A2828' },
         _cnt: cnt
       }))
 
-      const scatterData = Object.entries(provCount).map(([name, cnt]) => ({
-        name, value: [...this.getProvinceCenter(name), cnt]
-      }))
+      const allProvinces = new Set([...Object.keys(provHigh), ...Object.keys(provCritical)])
+      const scatterData = [...allProvinces].map(name => {
+        const hi = provHigh[name] || 0
+        const cr = provCritical[name] || 0
+        return {
+          name, value: [...this.getProvinceCenter(name), hi + cr],
+          highCount: hi, criticalCount: cr,
+          itemStyle: { color: cr > 0 ? '#DC2626' : '#F97316', opacity: 0.88 },
+          symbolSize: cr > 0 ? 14 : 10
+        }
+      })
 
       if (isRefresh) {
         this.mapChart.setOption({ animation: false, series: [{ data: scatterData }] }, false)
@@ -301,13 +334,10 @@ export default {
           type: 'scatter', coordinateSystem: 'geo',
           data: scatterData,
           symbolSize: 10,
-          itemStyle: { color: '#D94A4A', opacity: 0.85 },
-          tooltip: { formatter: p => `${p.name}<br/>告警: <b>${p.value[2]}</b> 条` }
+          tooltip: { formatter: p => buildTooltip(p) }
         }]
       })
-      this.mapChart.setOption({
-        tooltip: { trigger: 'item' }
-      }, false)
+      this.mapChart.setOption({ tooltip: { trigger: 'item' } }, false)
 
       this.mapChart.off('click')
       this.mapChart.on('click', params => {
@@ -331,28 +361,43 @@ export default {
       const bounds = this.computeBounds(cityFeatures)
       const center = [(bounds.minLng + bounds.maxLng) / 2, (bounds.minLat + bounds.maxLat) / 2]
 
-      const cityCount = {}
+      const cityTotal = {}
+      const cityHigh = {}
+      const cityCritical = {}
       data.forEach(d => {
         const city = d.city || '未知'
         const gb = this.getCityGb(city)
         if (gb && String(gb).startsWith(prefix)) {
           const geoName = this.resolveGeoName(city)
-          cityCount[geoName] = (cityCount[geoName] || 0) + (d.count || 1)
+          cityTotal[geoName] = (cityTotal[geoName] || 0) + (d.count || 1)
+          if (d.riskLevel === '极度危险') {
+            cityCritical[geoName] = (cityCritical[geoName] || 0) + (d.count || 1)
+          } else {
+            cityHigh[geoName] = (cityHigh[geoName] || 0) + (d.count || 1)
+          }
         }
       })
 
-      const cityVals = Object.values(cityCount)
+      const cityVals = Object.values(cityTotal)
       this.dataMax = cityVals.length ? Math.max(...cityVals) : 0
 
-      const regions = Object.entries(cityCount).map(([name, cnt]) => ({
+      const regions = Object.entries(cityTotal).map(([name, cnt]) => ({
         name,
         itemStyle: { areaColor: this.colorFor(cnt), borderColor: '#5A2828' },
         _cnt: cnt
       }))
 
-      const scatterData = Object.entries(cityCount).map(([name, cnt]) => ({
-        name, value: [...(this.getCityCenter(name) || this.getProvinceCenter(name)), cnt]
-      }))
+      const allCities = new Set([...Object.keys(cityHigh), ...Object.keys(cityCritical)])
+      const scatterData = [...allCities].map(name => {
+        const hi = cityHigh[name] || 0
+        const cr = cityCritical[name] || 0
+        return {
+          name, value: [...(this.getCityCenter(name) || this.getProvinceCenter(name)), hi + cr],
+          highCount: hi, criticalCount: cr,
+          itemStyle: { color: cr > 0 ? '#DC2626' : '#F97316', opacity: 0.88 },
+          symbolSize: cr > 0 ? 14 : 10
+        }
+      })
 
       if (isRefresh) {
         this.mapChart.setOption({ animation: false, series: [{ data: scatterData }] }, false)
@@ -370,8 +415,7 @@ export default {
           type: 'scatter', coordinateSystem: 'geo',
           data: scatterData,
           symbolSize: 10,
-          itemStyle: { color: '#D94A4A', opacity: 0.85 },
-          tooltip: { formatter: p => `${p.name}<br/>告警: <b>${p.value[2]}</b> 条` }
+          tooltip: { formatter: p => buildTooltip(p) }
         }]
       })
       this.mapChart.setOption({ tooltip: { trigger: 'item' } }, false)
