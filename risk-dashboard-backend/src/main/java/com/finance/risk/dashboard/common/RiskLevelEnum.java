@@ -1,42 +1,18 @@
 package com.finance.risk.dashboard.common;
 
-/**
- * 风险等级枚举
- * 对应需求文档 4.2 节评分体系：
- *   总分 < 60  → 低危 (绿色/放行)
- *   60 ≤ 总分 ≤ 80 → 中危 (黄色/核验)
- *   总分 > 80 → 高危 (红色/拦截)
- *
- * @author Risk Dashboard Team
- * @since 1.0.0
- */
 public enum RiskLevelEnum {
 
-    /** 低危 — 绿色放行 (score < 60) */
-    LOW("低危", "green", "PASS", "放行", 0, 59),
+    LOW("低危", "green", "PASS", "放行", 0, 40),
+    MEDIUM("中危", "yellow", "VERIFY", "核验", 41, 70),
+    HIGH("高危", "red", "BLOCK", "拦截", 71, 120),
+    CRITICAL("极度危险", "darkred", "BLOCK", "自动拦截+冻结", 121, Integer.MAX_VALUE),
+    HARD_BLOCK("直接拦截", "darkred", "BLOCK", "命中硬阻断直接拦截", -1, -1);
 
-    /** 中危 — 黄色核验 (60 ≤ score ≤ 80) */
-    MEDIUM("中危", "yellow", "VERIFY", "核验", 60, 80),
-
-    /** 高危 — 红色拦截 (score > 80) */
-    HIGH("高危", "red", "BLOCK", "拦截", 81, 100);
-
-    /** 中文名称 */
     private final String label;
-
-    /** 显示颜色 */
     private final String color;
-
-    /** 处理动作代码 */
     private final String actionCode;
-
-    /** 处理动作名称 */
     private final String actionName;
-
-    /** 分值下限 (包含) */
     private final int minScore;
-
-    /** 分值上限 (包含) */
     private final int maxScore;
 
     RiskLevelEnum(String label, String color, String actionCode,
@@ -49,33 +25,17 @@ public enum RiskLevelEnum {
         this.maxScore = maxScore;
     }
 
-    /**
-     * 根据综合风险评分计算风险等级
-     *
-     * @param finalScore 综合风险评分 (0-100)
-     * @return 对应的风险等级枚举
-     */
     public static RiskLevelEnum fromScore(int finalScore) {
-        if (finalScore < 60) {
-            return LOW;
-        } else if (finalScore <= 80) {
-            return MEDIUM;
-        } else {
-            return HIGH;
-        }
+        if (finalScore > 120) return CRITICAL;
+        if (finalScore > 70) return HIGH;
+        if (finalScore > 40) return MEDIUM;
+        return LOW;
     }
 
-    /**
-     * 根据分值获取对应的处理动作
-     *
-     * @param finalScore 综合风险评分
-     * @return 处理动作代码 (PASS/VERIFY/BLOCK)
-     */
     public static String getActionByScore(int finalScore) {
         return fromScore(finalScore).getActionCode();
     }
 
-    // ========== Getters ==========
     public String getLabel() { return label; }
     public String getColor() { return color; }
     public String getActionCode() { return actionCode; }

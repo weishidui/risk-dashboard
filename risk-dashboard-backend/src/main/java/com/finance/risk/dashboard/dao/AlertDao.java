@@ -5,25 +5,26 @@ import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 
-/**
- * 风控告警数据访问层 — 对应 risk_alert 表
- */
 @Mapper
 public interface AlertDao {
 
     @Insert("INSERT INTO risk_alert(alert_id, trans_id, user_id, hit_rules, amount, " +
-            "final_score, risk_level, city, alert_loc, raw_json) " +
+            "final_score, risk_level, city, alert_loc, status, " +
+            "counterparty_id, ip_address, is_new_device, is_new_counterparty, chain_id, raw_json) " +
             "VALUES(#{alertId}, #{transId}, #{userId}, #{hitRules}, #{amount}, " +
-            "#{finalScore}, #{riskLevel}, #{city}, #{alertLoc}, #{rawJson})")
+            "#{finalScore}, #{riskLevel}, #{city}, #{alertLoc}, #{status}, " +
+            "#{counterpartyId}, #{ipAddress}, #{isNewDevice}, #{isNewCounterparty}, #{chainId}, #{rawJson})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(AlertResult alert);
 
     @Insert("<script>" +
             "INSERT INTO risk_alert(alert_id, trans_id, user_id, hit_rules, amount, " +
-            "final_score, risk_level, city, alert_loc, raw_json) VALUES " +
+            "final_score, risk_level, city, alert_loc, status, " +
+            "counterparty_id, ip_address, is_new_device, is_new_counterparty, chain_id, raw_json) VALUES " +
             "<foreach collection='list' item='item' separator=','>" +
             "(#{item.alertId}, #{item.transId}, #{item.userId}, #{item.hitRules}, #{item.amount}, " +
-            "#{item.finalScore}, #{item.riskLevel}, #{item.city}, #{item.alertLoc}, #{item.rawJson})" +
+            "#{item.finalScore}, #{item.riskLevel}, #{item.city}, #{item.alertLoc}, #{item.status}, " +
+            "#{item.counterpartyId}, #{item.ipAddress}, #{item.isNewDevice}, #{item.isNewCounterparty}, #{item.chainId}, #{item.rawJson})" +
             "</foreach>" +
             "</script>")
     int batchInsert(@Param("list") List<AlertResult> alertList);
@@ -34,11 +35,13 @@ public interface AlertDao {
     @Select("<script>" +
             "SELECT * FROM risk_alert WHERE 1=1 " +
             "<if test='riskLevel != null and riskLevel != \"\"'>AND risk_level = #{riskLevel}</if> " +
+            "<if test='status != null and status != \"\"'>AND status = #{status}</if> " +
             "<if test='startTime != null'>AND create_time &gt;= #{startTime}</if> " +
             "<if test='endTime != null'>AND create_time &lt;= #{endTime}</if> " +
             "ORDER BY create_time DESC LIMIT #{offset}, #{limit}" +
             "</script>")
     List<AlertResult> findList(@Param("riskLevel") String riskLevel,
+                               @Param("status") String status,
                                @Param("startTime") String startTime,
                                @Param("endTime") String endTime,
                                @Param("offset") int offset,
@@ -47,12 +50,24 @@ public interface AlertDao {
     @Select("<script>" +
             "SELECT COUNT(*) FROM risk_alert WHERE 1=1 " +
             "<if test='riskLevel != null and riskLevel != \"\"'>AND risk_level = #{riskLevel}</if> " +
+            "<if test='status != null and status != \"\"'>AND status = #{status}</if> " +
             "<if test='startTime != null'>AND create_time &gt;= #{startTime}</if> " +
             "<if test='endTime != null'>AND create_time &lt;= #{endTime}</if> " +
             "</script>")
     Long count(@Param("riskLevel") String riskLevel,
+               @Param("status") String status,
                @Param("startTime") String startTime,
                @Param("endTime") String endTime);
+
+    /** 更新告警处理状态 */
+    @Update("UPDATE risk_alert SET status = #{status}, handler = #{handler}, " +
+            "handle_time = #{handleTime}, handle_remark = #{handleRemark} " +
+            "WHERE alert_id = #{alertId}")
+    int updateStatus(@Param("alertId") String alertId,
+                     @Param("status") String status,
+                     @Param("handler") String handler,
+                     @Param("handleTime") Long handleTime,
+                     @Param("handleRemark") String handleRemark);
 
     @Select("SELECT risk_level, COUNT(*) as cnt FROM risk_alert " +
             "WHERE create_time > #{sinceTime} GROUP BY risk_level")
@@ -63,12 +78,11 @@ public interface AlertDao {
     List<RuleCount> countByHitRule(@Param("sinceTime") String sinceTime);
 
     @Select("SELECT alert_loc, COUNT(*) as cnt FROM risk_alert " +
-            "WHERE create_time > #{sinceTime} AND risk_level = '高危' AND alert_loc IS NOT NULL " +
+            "WHERE create_time > #{sinceTime} AND risk_level IN ('高危', '极度危险') AND alert_loc IS NOT NULL " +
             "GROUP BY alert_loc ORDER BY cnt DESC LIMIT #{limit}")
     List<CityAlertCount> countHighRiskByCity(@Param("sinceTime") String sinceTime,
                                               @Param("limit") int limit);
 
-    /** 批量刷新时间戳（将旧 create_time 更新为当前时间，用于开发环境数据刷新） */
     @Update("UPDATE risk_alert SET create_time = NOW() WHERE id > 0")
     int refreshTimestamps();
 

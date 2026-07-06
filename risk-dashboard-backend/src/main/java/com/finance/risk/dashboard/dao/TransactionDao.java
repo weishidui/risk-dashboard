@@ -5,16 +5,23 @@ import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 
-/**
- * 交易流水数据访问层 — 对应 transaction_history 表
- */
 @Mapper
 public interface TransactionDao {
 
     @Insert("INSERT INTO transaction_history(trans_id, user_id, amount, trans_timestamp, city, " +
-            "geo_location, device_id, network_type, dev_score) " +
+            "geo_location, device_id, network_type, dev_score, " +
+            "ip_address, os_type, os_version, screen_resolution, battery_level, root_jailbreak, " +
+            "sim_operator, user_agent, dns_server, wifi_ssid, " +
+            "trans_type, pay_channel, input_method, click_duration, note, page_url, " +
+            "counterparty_id, counterparty_name, counterparty_bank, " +
+            "login_session_id, login_fail_count) " +
             "VALUES(#{transId}, #{userId}, #{amount}, #{transTimestamp}, #{city}, " +
-            "#{geoLocation}, #{deviceId}, #{networkType}, #{devScore})")
+            "#{geoLocation}, #{deviceId}, #{networkType}, #{devScore}, " +
+            "#{ipAddress}, #{osType}, #{osVersion}, #{screenResolution}, #{batteryLevel}, #{rootJailbreak}, " +
+            "#{simOperator}, #{userAgent}, #{dnsServer}, #{wifiSsid}, " +
+            "#{transType}, #{payChannel}, #{inputMethod}, #{clickDuration}, #{note}, #{pageUrl}, " +
+            "#{counterpartyId}, #{counterpartyName}, #{counterpartyBank}, " +
+            "#{loginSessionId}, #{loginFailCount})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Transaction transaction);
 

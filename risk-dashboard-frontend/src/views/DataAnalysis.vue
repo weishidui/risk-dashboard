@@ -56,6 +56,10 @@ export default {
     Object.values(this.charts).forEach(c => c.dispose())
   },
   methods: {
+    riskPieColor(name) {
+      const m = { '极度危险': '#DC2626', '高危': '#F97316', '中危': '#F59E0B', '低危': '#22C55E' }
+      return m[name] || '#909399'
+    },
     async loadData() {
       try {
         const [riskRes, ruleRes, trendRes] = await Promise.all([
@@ -84,7 +88,7 @@ export default {
           label: { color: '#5D6F85', fontSize: 11 },
           data: data.map(d => ({
             name: d.name, value: d.value,
-            itemStyle: { color: d.color || (d.name === '高危' ? '#D94A4A' : d.name === '中危' ? '#D4952A' : '#3C9D6E') }
+            itemStyle: { color: d.color || this.riskPieColor(d.name) }
           }))
         }]
       }, true)
@@ -129,7 +133,7 @@ export default {
           textStyle: { color: '#D8DFE8', fontSize: 11 }
         },
         legend: {
-          data: ['高危', '中危', '低危'],
+          data: ['极度危险', '高危', '中危', '低危'],
           textStyle: { color: '#5D6F85', fontSize: 11 },
           top: 0
         },
@@ -148,22 +152,28 @@ export default {
         },
         series: [
           {
+            name: '极度危险', type: 'line',
+            data: data.map(d => d.criticalRiskCount || 0),
+            smooth: false, symbol: 'none',
+            lineStyle: { color: '#DC2626', width: 1.5 }
+          },
+          {
             name: '高危', type: 'line',
             data: data.map(d => d.highRiskCount),
             smooth: false, symbol: 'none',
-            lineStyle: { color: '#D94A4A', width: 1.5 }
+            lineStyle: { color: '#F97316', width: 1.5 }
           },
           {
             name: '中危', type: 'line',
             data: data.map(d => d.mediumRiskCount),
             smooth: false, symbol: 'none',
-            lineStyle: { color: '#D4952A', width: 1.5 }
+            lineStyle: { color: '#F59E0B', width: 1.5 }
           },
           {
             name: '低危', type: 'line',
             data: data.map(d => d.lowRiskCount),
             smooth: false, symbol: 'none',
-            lineStyle: { color: '#3C9D6E', width: 1.5 }
+            lineStyle: { color: '#22C55E', width: 1.5 }
           }
         ]
       }, true)

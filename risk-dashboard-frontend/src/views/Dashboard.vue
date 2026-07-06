@@ -86,9 +86,8 @@
         </el-table-column>
         <el-table-column prop="finalScore" label="评分" width="70" sortable>
           <template slot-scope="{ row }">
-            <el-tag :type="scoreType(row.finalScore)" size="mini" effect="dark">
-              {{ row.finalScore }}
-            </el-tag>
+            <span v-if="row.finalScore > 120" class="score-critical-tag">{{ row.finalScore }}</span>
+            <el-tag v-else :type="scoreType(row.finalScore)" size="mini" effect="dark">{{ row.finalScore }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="riskLevel" label="等级" width="60">
@@ -298,7 +297,7 @@ export default {
           min: 0, max: 100, splitNumber: 10,
           axisLine: {
             lineStyle: {
-              color: [[0.3, '#3C9D6E'], [0.6, '#D4952A'], [1, '#D94A4A']],
+              color: [[0.2, '#22C55E'], [0.4, '#F59E0B'], [0.6, '#F97316'], [1, '#DC2626']],
               width: 6
             }
           },
@@ -319,8 +318,13 @@ export default {
     },
 
     fmtNum(n) { return n?.toLocaleString?.() || n },
-    scoreType(s) { return s >= 80 ? 'danger' : s >= 60 ? 'warning' : 'success' },
-    riskClass(l) { return l === '高危' ? 'danger' : l === '中危' ? 'warning' : 'success' },
+    scoreType(s) { return s > 120 ? '' : s >= 71 ? 'danger' : s >= 41 ? 'warning' : 'success' },
+    riskClass(l) {
+      if (l === '极度危险') return 'critical'
+      if (l === '高危') return 'danger'
+      if (l === '中危') return 'warning'
+      return 'success'
+    },
     actionTagType(a) { return ACTION_MAP[a]?.type || 'info' },
     actionLabel(a) { return ACTION_MAP[a]?.label || a }
   }
@@ -433,6 +437,7 @@ export default {
 
 /* Risk text */
 .risk-text { font-weight: 600; font-size: var(--text-sm); }
+.risk-text.critical { color: var(--color-critical); }
 .risk-text.danger  { color: var(--color-danger); }
 .risk-text.warning { color: var(--color-warning); }
 .risk-text.success { color: var(--color-success); }
@@ -441,4 +446,17 @@ export default {
 .text-warning { color: var(--color-warning); font-size: var(--text-xs); }
 
 .mono-num { font-family: var(--font-mono); font-size: var(--text-sm); }
+
+.score-critical-tag {
+  display: inline-block;
+  padding: 0 6px;
+  height: 20px;
+  line-height: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #fff;
+  background: #991B1B;
+  border-radius: 2px;
+}
 </style>

@@ -214,17 +214,19 @@ export default {
     async loadHighRiskDetails() {
       try {
         const res = await fetch(
-          `/api/alert/list?riskLevel=高危&page=${this.highRiskPage}&pageSize=20`
+          `/api/alert/list?page=${this.highRiskPage}&pageSize=20`
         ).then(r => r.json())
         if (res.data) {
-          this.highRiskAlerts = res.data.list || []
-          this.highRiskTotal = res.data.total || 0
+          this.highRiskAlerts = (res.data.list || []).filter(
+            a => a.riskLevel === '高危' || a.riskLevel === '极度危险'
+          )
+          this.highRiskTotal = this.highRiskAlerts.length
         }
       } catch { /* ignore */ }
     },
 
     scoreClass(s) {
-      if (s >= 80) return 'danger'; if (s >= 60) return 'warning'; return 'success'
+      if (s > 120) return 'critical'; if (s >= 71) return 'danger'; if (s >= 41) return 'warning'; return 'success'
     },
 
     mapColors() {
@@ -635,7 +637,8 @@ export default {
 
 .text-success { color: var(--color-success); font-size: 11px; }
 .mono-num { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; }
-.mono-num.danger  { color: var(--color-danger); }
-.mono-num.warning { color: var(--color-warning); }
-.mono-num.success { color: var(--color-success); }
+.mono-num.critical { color: var(--color-critical); }
+.mono-num.danger   { color: var(--color-danger); }
+.mono-num.warning  { color: var(--color-warning); }
+.mono-num.success  { color: var(--color-success); }
 </style>

@@ -6,17 +6,17 @@ import com.finance.risk.dashboard.vo.AlertVO;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 风控告警服务接口
- */
 public interface AlertService {
 
     int receiveAlerts(List<AlertInputDTO> alerts);
 
     boolean receiveAlert(AlertInputDTO alert);
 
-    Map<String, Object> queryAlertList(String riskLevel, String startTime, String endTime,
+    Map<String, Object> queryAlertList(String riskLevel, String status, String startTime, String endTime,
                                         int page, int pageSize);
+
+    /** 更新告警处理状态 (工作流) */
+    boolean updateAlertStatus(String alertId, String status, String handler, String remark);
 
     List<AlertVO> getRecentAlerts(int limit);
 

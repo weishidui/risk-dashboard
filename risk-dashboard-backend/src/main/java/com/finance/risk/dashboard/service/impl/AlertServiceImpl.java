@@ -33,7 +33,6 @@ public class AlertServiceImpl implements AlertService {
 
     private static final DateTimeFormatter DB_TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    /** 城市坐标映射 (用于地图展示，因 risk_alert 表不再存储 geo_location) */
     private static final Map<String, String> CITY_COORDS = new HashMap<>();
     static {
         CITY_COORDS.put("北京", "116.40,39.90"); CITY_COORDS.put("上海", "121.47,31.23");
@@ -93,11 +92,12 @@ public class AlertServiceImpl implements AlertService {
     }
 
     @Override
-    public Map<String, Object> queryAlertList(String riskLevel, String startTime, String endTime,
+    public Map<String, Object> queryAlertList(String riskLevel, String status,
+                                               String startTime, String endTime,
                                                int page, int pageSize) {
         int offset = (page - 1) * pageSize;
-        List<AlertResult> list = alertDao.findList(riskLevel, startTime, endTime, offset, pageSize);
-        Long total = alertDao.count(riskLevel, startTime, endTime);
+        List<AlertResult> list = alertDao.findList(riskLevel, status, startTime, endTime, offset, pageSize);
+        Long total = alertDao.count(riskLevel, status, startTime, endTime);
 
         List<AlertVO> vos = list.stream().map(this::convertToVO).collect(Collectors.toList());
 
@@ -107,6 +107,17 @@ public class AlertServiceImpl implements AlertService {
         result.put("page", page);
         result.put("pageSize", pageSize);
         return result;
+    }
+
+    @Override
+    public boolean updateAlertStatus(String alertId, String status, String handler, String remark) {
+        Long handleTime = System.currentTimeMillis();
+        int rows = alertDao.updateStatus(alertId, status, handler, handleTime, remark);
+        if (rows > 0) {
+            log.info("告警 {} 状态更新: {} -> handler={}", alertId, status, handler);
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -124,7 +135,7 @@ public class AlertServiceImpl implements AlertService {
             log.warn("Redis 缓存读取失败，回退到数据库查询: {}", e.getMessage());
         }
 
-        List<AlertResult> list = alertDao.findList(null, null, null, 0, limit);
+        List<AlertResult> list = alertDao.findList(null, null, null, null, 0, limit);
         return list.stream().map(this::convertToVO).collect(Collectors.toList());
     }
 
@@ -189,6 +200,12 @@ public class AlertServiceImpl implements AlertService {
                 .riskLevel(dto.getRiskLevel())
                 .city(dto.getCity())
                 .alertLoc(dto.getAlertLoc())
+                .status(dto.getStatus() != null ? dto.getStatus() : "pending")
+                .counterpartyId(dto.getCounterpartyId())
+                .ipAddress(dto.getIpAddress())
+                .isNewDevice(dto.getIsNewDevice())
+                .isNewCounterparty(dto.getIsNewCounterparty())
+                .chainId(dto.getChainId())
                 .rawJson(dto.getRawJson())
                 .build();
     }
@@ -205,12 +222,21 @@ public class AlertServiceImpl implements AlertService {
                 .city(entity.getCity())
                 .alertLoc(entity.getAlertLoc())
                 .action(riskLevelToAction(entity.getRiskLevel()))
+                .status(entity.getStatus())
+                .handler(entity.getHandler())
+                .handleTime(entity.getHandleTime())
+                .handleRemark(entity.getHandleRemark())
+                .counterpartyId(entity.getCounterpartyId())
+                .ipAddress(entity.getIpAddress())
+                .isNewDevice(entity.getIsNewDevice())
+                .isNewCounterparty(entity.getIsNewCounterparty())
+                .chainId(entity.getChainId())
                 .createTime(entity.getCreateTime())
                 .build();
     }
 
-    /** 由 risk_level 推导处理动作: 低危→PASS, 中危→VERIFY, 高危→BLOCK */
     private String riskLevelToAction(String riskLevel) {
+        if ("极度危险".equals(riskLevel)) return "BLOCK";
         if ("高危".equals(riskLevel)) return "BLOCK";
         if ("中危".equals(riskLevel)) return "VERIFY";
         return "PASS";
@@ -224,8 +250,10 @@ public class AlertServiceImpl implements AlertService {
     }
 
     private String getRiskColor(String riskLevel) {
-        if ("高危".equals(riskLevel)) return "#F56C6C";
-        if ("中危".equals(riskLevel)) return "#E6A23C";
-        return "#67C23A";
+        if ("硬阻断".equals(riskLevel)) return "#991B1B";
+        if ("极度危险".equals(riskLevel)) return "#DC2626";
+        if ("高危".equals(riskLevel)) return "#F97316";
+        if ("中危".equals(riskLevel)) return "#F59E0B";
+        return "#22C55E";
     }
 }

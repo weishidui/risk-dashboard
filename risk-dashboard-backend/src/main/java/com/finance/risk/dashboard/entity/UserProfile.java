@@ -8,8 +8,7 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 
 /**
- * 用户历史行为画像实体 — 对应 user_profile 表
- * 字段严格对齐《数据库结构.md》第 3 节
+ * 用户历史行为画像实体 — 对应 user_profile 表 (24字段)
  */
 @Data
 @Builder
@@ -21,16 +20,39 @@ public class UserProfile implements Serializable {
 
     private Long id;
     private String userId;
-    /** 过去30天单笔平均金额 */
+
+    // 行为基线 (6字段)
     private Double avgAmt30d;
-    /** 过去3个月高频城市 Top3，逗号分隔 */
     private String commonCities;
-    /** 用户常用设备 ID 列表，逗号分隔 */
     private String commonDevs;
-    /** 上一笔交易发生的毫秒级时间戳 */
+    private String commonPayChannels;
+    private String commonTransTypes;
+    private String commonCounterparties;
+
+    // 历史快照 (4字段)
     private Long lastTransTs;
-    /** 上一笔交易发生城市 */
     private String lastCity;
-    /** 画像更新时间 */
+    private String lastIp;
+    private Long lastLoginTime;
+
+    // 账户信息 (6字段)
+    private Long registrationTime;
+    private Double totalBalance;
+    private Double singleLimit;
+    private Double dailyLimit;
+    private Double monthlyLimit;
+    private String accountStatus;
+
+    // 累计统计 (5字段)
+    private Integer loginCount24h;
+    private Integer transCount24h;
+    private Double transAmount24h;
+    private Integer transCount7d;
+    private Integer cancelRetryCount;
+
+    // 风险标记 (2字段)
+    private String riskTags;
+    private Integer riskScore;
+
     private String updateTime;
 }

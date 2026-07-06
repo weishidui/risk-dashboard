@@ -8,8 +8,7 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 
 /**
- * 交易流水实体 — 对应 transaction_history 表
- * 字段严格对齐《数据库结构.md》第 2 节
+ * 交易流水实体 — 对应 transaction_history 表 (31字段)
  */
 @Data
 @Builder
@@ -23,16 +22,41 @@ public class Transaction implements Serializable {
     private String transId;
     private String userId;
     private Double amount;
-    /** 交易时间戳 (13位毫秒级)，对应字段 trans_timestamp */
     private Long transTimestamp;
     private String city;
-    /** 地理经纬度，格式如 "116.3,39.9" */
     private String geoLocation;
     private String deviceId;
-    /** 网络类型：WiFi / 4G / 5G / VPN */
     private String networkType;
-    /** 设备安全分，范围 0-100 */
     private Integer devScore;
-    /** 数据入库时间 */
+
+    // 设备/环境维度 (10字段)
+    private String ipAddress;
+    private String osType;
+    private String osVersion;
+    private String screenResolution;
+    private Integer batteryLevel;
+    private Integer rootJailbreak;
+    private String simOperator;
+    private String userAgent;
+    private String dnsServer;
+    private String wifiSsid;
+
+    // 交易行为维度 (6字段)
+    private String transType;
+    private String payChannel;
+    private String inputMethod;
+    private Long clickDuration;
+    private String note;
+    private String pageUrl;
+
+    // 收款方维度 (3字段)
+    private String counterpartyId;
+    private String counterpartyName;
+    private String counterpartyBank;
+
+    // 身份/会话维度 (2字段)
+    private String loginSessionId;
+    private Integer loginFailCount;
+
     private String createTime;
 }

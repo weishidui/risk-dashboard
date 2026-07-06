@@ -4,22 +4,32 @@
  */
 
 export const RISK_LEVEL_MAP = {
-  '高危': { color: '#EF4444', icon: 'el-icon-warning', type: 'danger' },
-  '中危': { color: '#F59E0B', icon: 'el-icon-info', type: 'warning' },
-  '低危': { color: '#22C55E', icon: 'el-icon-success', type: 'success' }
+  '低危':     { color: '#22C55E', icon: 'el-icon-success',  type: 'success'  },
+  '中危':     { color: '#F59E0B', icon: 'el-icon-info',     type: 'warning'  },
+  '高危':     { color: '#F97316', icon: 'el-icon-warning',  type: 'danger'   },
+  '极度危险': { color: '#DC2626', icon: 'el-icon-error',    type: 'danger'   },
+  '硬阻断':   { color: '#991B1B', icon: 'el-icon-error',    type: 'danger'   }
+}
+
+export const RISK_COLORS = {
+  '低危':     '#22C55E',
+  '中危':     '#F59E0B',
+  '高危':     '#F97316',
+  '极度危险': '#DC2626',
+  '硬阻断':   '#991B1B'
 }
 
 export const ACTION_MAP = {
-  'PASS': { label: '放行', color: '#22C55E', type: 'success' },
-  'VERIFY': { label: '核验', color: '#F59E0B', type: 'warning' },
-  'BLOCK': { label: '拦截', color: '#EF4444', type: 'danger' }
+  'PASS':   { label: '放行', color: '#22C55E', type: 'success'  },
+  'VERIFY': { label: '核验', color: '#F59E0B', type: 'warning'  },
+  'BLOCK':  { label: '拦截', color: '#DC2626', type: 'danger'   }
 }
 
 export const NETWORK_TYPES = ['WiFi', '4G', '5G', 'VPN']
 
 export const CHART_COLORS = [
-  '#3B82F6', '#22C55E', '#F59E0B', '#EF4444',
-  '#8B5CF6', '#06B6D4', '#F97316', '#EC4899'
+  '#3B82F6', '#22C55E', '#F59E0B', '#F97316', '#DC2626',
+  '#8B5CF6', '#06B6D4', '#EC4899'
 ]
 
 export const REFRESH_INTERVAL = 5000

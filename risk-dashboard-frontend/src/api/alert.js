@@ -1,6 +1,3 @@
-/**
- * 告警管理 API
- */
 import request from './request'
 
 /** 分页查询告警列表 */
@@ -13,9 +10,9 @@ export function getRecentAlerts(limit = 20) {
   return request.get('/alert/recent', { params: { limit } })
 }
 
-/** 标记告警已处理 */
-export function markAlertHandled(alertId, remark = '') {
-  return request.put(`/alert/${alertId}/handle`, null, { params: { remark } })
+/** 更新告警处理状态 */
+export function updateAlertStatus(alertId, status, handler = 'admin', remark = '') {
+  return request.put(`/alert/${alertId}/status`, null, { params: { status, handler, remark } })
 }
 
 /** 风险等级分布统计 */

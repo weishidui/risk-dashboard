@@ -4,60 +4,47 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
-/**
- * 风控预警结果数据接入 DTO — 对应 risk_alert 表
- */
 @Data
 @ApiModel(description = "风控预警结果数据接入对象")
 public class AlertInputDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @NotBlank(message = "预警编号不能为空")
-    @ApiModelProperty(value = "预警编号 (唯一告警ID)", required = true, example = "ALT20260630120000001")
+    @NotBlank @ApiModelProperty(value = "预警编号", required = true)
     private String alertId;
-
-    @NotBlank(message = "关联交易流水号不能为空")
-    @ApiModelProperty(value = "关联交易流水号", required = true)
+    @NotBlank @ApiModelProperty(value = "关联交易流水号", required = true)
     private String transId;
-
-    @NotBlank(message = "用户标识不能为空")
-    @ApiModelProperty(value = "用户标识", required = true)
+    @NotBlank @ApiModelProperty(value = "用户标识", required = true)
     private String userId;
-
-    @NotNull(message = "交易金额不能为空")
-    @ApiModelProperty(value = "交易金额", required = true)
+    @NotNull @ApiModelProperty(value = "交易金额", required = true)
     private Double amount;
-
-    @NotBlank(message = "交易城市不能为空")
-    @ApiModelProperty(value = "交易城市", required = true, example = "深圳")
+    @NotBlank @ApiModelProperty(value = "交易城市", required = true)
     private String city;
-
-    @NotBlank(message = "触发规则标签不能为空")
-    @ApiModelProperty(value = "触发规则标签 (多个规则用分号分隔)", required = true,
-            example = "金额突变;异地瞬移")
+    @NotBlank @ApiModelProperty(value = "触发规则标签(分号分隔)", required = true)
     private String hitRules;
-
-    @NotNull(message = "综合风险评分不能为空")
-    @Min(value = 0, message = "风险评分最小为0")
-    @Max(value = 100, message = "风险评分最大为100")
-    @ApiModelProperty(value = "综合风险评分 (0-100)", required = true, example = "85")
+    @NotNull @ApiModelProperty(value = "综合风险评分(0-300+)", required = true)
     private Integer finalScore;
-
-    @NotBlank(message = "风险等级不能为空")
-    @ApiModelProperty(value = "风险等级 (高危/中危/低危)", required = true,
-            example = "高危", allowableValues = "高危,中危,低危")
+    @NotBlank @ApiModelProperty(value = "风险等级(低危/中危/高危/极度危险)", required = true)
     private String riskLevel;
-
-    @NotBlank(message = "告警位置不能为空")
-    @ApiModelProperty(value = "告警位置，用于大屏地图展示", required = true, example = "深圳")
+    @NotBlank @ApiModelProperty(value = "告警位置", required = true)
     private String alertLoc;
+
+    @ApiModelProperty(value = "处理状态(pending/processing/verified/blocked/closed)")
+    private String status;
+    @ApiModelProperty(value = "关联收款方ID")
+    private String counterpartyId;
+    @ApiModelProperty(value = "交易IP地址")
+    private String ipAddress;
+    @ApiModelProperty(value = "是否新设备(0=否 1=是)")
+    private Integer isNewDevice;
+    @ApiModelProperty(value = "是否首次收款方(0=否 1=是)")
+    private Integer isNewCounterparty;
+    @ApiModelProperty(value = "关联资金链路ID")
+    private String chainId;
 
     @ApiModelProperty(value = "Kafka 原始 JSON 报文")
     private String rawJson;

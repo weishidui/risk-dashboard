@@ -13,9 +13,6 @@ import javax.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 告警管理控制器 — 查询 risk_alert 表
- */
 @Api(tags = "3. 告警管理接口")
 @RestController
 @RequestMapping(Constants.API_ALERT_PREFIX)
@@ -24,18 +21,32 @@ public class AlertController {
     @Resource
     private AlertService alertService;
 
-    @ApiOperation(value = "分页查询告警列表", notes = "支持按风险等级、时间范围筛选。")
+    @ApiOperation(value = "分页查询告警列表", notes = "支持按风险等级、处理状态、时间范围筛选。")
     @GetMapping("/list")
     public Result<Map<String, Object>> queryAlertList(
-            @ApiParam(value = "风险等级 (高危/中危/低危)") @RequestParam(required = false) String riskLevel,
-            @ApiParam(value = "开始时间 (yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) String startTime,
-            @ApiParam(value = "结束时间 (yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) String endTime,
+            @ApiParam(value = "风险等级") @RequestParam(required = false) String riskLevel,
+            @ApiParam(value = "处理状态(pending/processing/verified/blocked/closed)") @RequestParam(required = false) String status,
+            @ApiParam(value = "开始时间") @RequestParam(required = false) String startTime,
+            @ApiParam(value = "结束时间") @RequestParam(required = false) String endTime,
             @ApiParam(value = "页码", defaultValue = "1") @RequestParam(defaultValue = "1") int page,
             @ApiParam(value = "每页大小", defaultValue = "20") @RequestParam(defaultValue = "20") int pageSize) {
 
         Map<String, Object> result = alertService.queryAlertList(
-                riskLevel, startTime, endTime, page, pageSize);
+                riskLevel, status, startTime, endTime, page, pageSize);
         return Result.ok(result);
+    }
+
+    @ApiOperation(value = "更新告警处理状态", notes = "告警工作流: pending→processing→verified/blocked→closed")
+    @PutMapping("/{alertId}/status")
+    public Result<String> updateAlertStatus(
+            @ApiParam(value = "告警编号", required = true) @PathVariable String alertId,
+            @ApiParam(value = "目标状态(processing/verified/blocked/closed)", required = true) @RequestParam String status,
+            @ApiParam(value = "处理人") @RequestParam(required = false) String handler,
+            @ApiParam(value = "处理备注") @RequestParam(required = false) String remark) {
+
+        boolean ok = alertService.updateAlertStatus(alertId, status,
+                handler != null ? handler : "system", remark);
+        return ok ? Result.ok("状态更新成功") : Result.fail("更新失败：告警不存在");
     }
 
     @ApiOperation(value = "获取最新告警列表", notes = "仪表盘实时告警滚动展示。")
@@ -46,7 +57,7 @@ public class AlertController {
         return Result.ok(alerts);
     }
 
-    @ApiOperation(value = "风险等级分布统计", notes = "用于饼图展示高/中/低危分布。")
+    @ApiOperation(value = "风险等级分布统计", notes = "用于饼图展示风险等级分布。")
     @GetMapping("/stat/risk-level")
     public Result<List<Map<String, Object>>> statByRiskLevel() {
         return Result.ok(alertService.countByRiskLevel());

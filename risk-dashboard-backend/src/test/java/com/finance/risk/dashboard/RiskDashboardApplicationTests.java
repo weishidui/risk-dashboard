@@ -76,11 +76,12 @@ class RiskDashboardApplicationTests {
         alert.setFinalScore(85);
         alert.setRiskLevel("高危");
         alert.setAlertLoc("深圳");
-        alert.setGeoLocation("114.1,22.5");
-        alert.setNetworkType("VPN");
-        alert.setDevScore(35);
-        alert.setAction("BLOCK");
-        alert.setAlertTime(System.currentTimeMillis());
+        alert.setCity("深圳");
+        alert.setStatus("pending");
+        alert.setCounterpartyId("CP_TEST");
+        alert.setIpAddress("192.168.1.1");
+        alert.setIsNewDevice(1);
+        alert.setIsNewCounterparty(1);
 
         boolean success = alertService.receiveAlert(alert);
         assertTrue(success, "告警数据接收应该成功");
