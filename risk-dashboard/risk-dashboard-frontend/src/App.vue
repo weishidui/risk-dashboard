@@ -1,69 +1,74 @@
 <template>
   <div id="app">
-    <!-- 未登录：仅显示登录/注册页面 -->
     <template v-if="!isLoggedIn">
       <router-view />
     </template>
 
-    <!-- 已登录：侧边栏 + 主内容区 -->
-    <el-container v-else class="app-container">
-      <el-aside width="200px" class="sidebar">
-        <div class="logo">
-          <span>RISK MONITOR</span>
+    <div v-else class="app-shell">
+
+      <!-- 主内容区 -->
+      <!-- 顶栏：用户区靠右 -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+          <span class="topbar-title">实时风险监控仪表盘</span>
         </div>
-
-        <div class="user-info">
-          <div class="user-name">{{ username }}</div>
-          <div class="user-role">{{ roleLabel }}</div>
-          <div v-if="isAuditor" class="auditor-tag">只读模式</div>
+        <div class="topbar-right">
+          <span class="ws-dot" :class="wsStatus === '已连接' ? 'online' : 'offline'" :title="wsStatus"></span>
+          <span class="topbar-time">{{ nowTime }}</span>
+          <el-dropdown trigger="click" @command="handleCommand">
+            <span class="user-btn">
+              <i class="el-icon-user-solid"></i>
+              <span>{{ username }}</span>
+              <i class="el-icon-arrow-down"></i>
+            </span>
+            <el-dropdown-menu slot="dropdown">
+              <el-dropdown-item disabled>
+                <div class="dd-user-info">
+                  <div class="dd-name">{{ username }}</div>
+                  <div class="dd-role">{{ roleLabel }}</div>
+                </div>
+              </el-dropdown-item>
+              <li class="dd-divider"></li>
+              <el-dropdown-item command="password">
+                <i class="el-icon-lock"></i> 修改密码
+              </el-dropdown-item>
+              <el-dropdown-item v-if="canAccess('/users')" command="users">
+                <i class="el-icon-user"></i> 账号管理
+              </el-dropdown-item>
+              <li class="dd-divider"></li>
+              <el-dropdown-item disabled class="dd-section-label">
+                <span>主题设置</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="">
+                <ThemeSwitcher />
+              </el-dropdown-item>
+              <li class="dd-divider"></li>
+              <el-dropdown-item command="logout">
+                <i class="el-icon-switch-button"></i> 退出登录
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </el-dropdown>
         </div>
+      </header>
 
-        <el-menu
-          :default-active="activeMenu"
-          router
-          background-color="var(--color-sidebar-bg)"
-          text-color="var(--color-sidebar-text)"
-          active-text-color="var(--color-sidebar-text-active)"
-          class="sidebar-menu">
-          <el-menu-item v-if="canAccess('/dashboard')" index="/dashboard">
-            <i class="el-icon-s-data"></i><span>实时监控仪表盘</span>
-          </el-menu-item>
-          <el-menu-item v-if="canAccess('/transaction')" index="/transaction">
-            <i class="el-icon-s-order"></i><span>交易流水监控</span>
-          </el-menu-item>
-          <el-menu-item v-if="canAccess('/alerts')" index="/alerts">
-            <i class="el-icon-warning"></i><span>风险告警管理</span>
-          </el-menu-item>
-          <el-menu-item v-if="canAccess('/risk-map')" index="/risk-map">
-            <i class="el-icon-location-outline"></i><span>风险地理分布</span>
-          </el-menu-item>
-          <el-menu-item v-if="canAccess('/analysis')" index="/analysis">
-            <i class="el-icon-pie-chart"></i><span>数据统计分析</span>
-          </el-menu-item>
-          <el-menu-item v-if="canAccess('/config')" index="/config">
-            <i class="el-icon-setting"></i><span>评分规则</span>
-          </el-menu-item>
-          <el-menu-item v-if="canAccess('/users')" index="/users">
-            <i class="el-icon-user"></i><span>账号管理</span>
-          </el-menu-item>
-        </el-menu>
-
-        <div class="sidebar-bottom">
-          <div class="system-status">
-            <span class="dot" :class="wsStatus === '已连接' ? 'online' : 'offline'"></span>
-            <span>{{ wsStatus === '已连接' ? 'WS 已连接' : wsStatus }}</span>
-          </div>
-          <div class="logout-btn" @click="handleLogout">
-            <i class="el-icon-switch-button"></i><span>退出登录</span>
-          </div>
-          <ThemeSwitcher />
-        </div>
-      </el-aside>
-
-      <el-main class="main-content">
+      <main class="main-content">
         <router-view />
-      </el-main>
-    </el-container>
+      </main>
+
+      <!-- 修改密码弹窗 -->
+      <el-dialog title="修改密码" :visible.sync="pwdDialogVisible" width="360px" append-to-body>
+        <el-form label-width="80px" size="small">
+          <el-form-item label="新密码">
+            <el-input v-model="newPassword" type="password" show-password />
+          </el-form-item>
+        </el-form>
+        <span slot="footer">
+          <el-button size="small" @click="pwdDialogVisible = false">取消</el-button>
+          <el-button size="small" type="primary" @click="changePassword">确认</el-button>
+        </span>
+      </el-dialog>
+    </div>
   </div>
 </template>
 
@@ -75,14 +80,20 @@ export default {
   name: 'App',
   components: { ThemeSwitcher },
   data() {
-    return { wsStatus: '未连接', ws: null }
+    return {
+      wsStatus: '未连接',
+      ws: null,
+      pwdDialogVisible: false,
+      newPassword: '',
+      nowTime: '',
+      timeTimer: null
+    }
   },
   computed: {
     isLoggedIn() { return this.$store.getters.isLoggedIn },
     username()   { return this.$store.getters.username },
     roleLabel()  { return ROLE_LABELS[this.$store.getters.userRole] || '' },
-    isAuditor()  { return this.$store.getters.userRole === 'auditor' },
-    activeMenu() { return this.$route.path }
+    isAuditor()  { return this.$store.getters.userRole === 'auditor' }
   },
   watch: {
     isLoggedIn(val) {
@@ -92,20 +103,55 @@ export default {
   },
   mounted() {
     if (this.isLoggedIn) this.connectWebSocket()
+    this.nowTime = new Date().toLocaleTimeString('zh-CN')
+    this.timeTimer = setInterval(() => {
+      this.nowTime = new Date().toLocaleTimeString('zh-CN')
+    }, 1000)
   },
   beforeDestroy() {
     if (this.ws) this.ws.close()
+    clearInterval(this.timeTimer)
   },
   methods: {
     canAccess(path) {
       const allowed = ROLE_ROUTES[this.$store.getters.userRole] || []
       return allowed.includes(path)
     },
-    handleLogout() {
-      this.$store.dispatch('logout')
-      if (this.ws) { this.ws.close(); this.ws = null }
-      this.wsStatus = '未连接'
-      this.$router.push('/login')
+    handleCommand(cmd) {
+      if (cmd === 'logout') {
+        this.$store.dispatch('logout')
+        if (this.ws) { this.ws.close(); this.ws = null }
+        this.wsStatus = '未连接'
+        this.$router.push('/login')
+      } else if (cmd === 'users') {
+        this.$router.push('/users')
+      } else if (cmd === 'password') {
+        this.pwdDialogVisible = true
+        this.newPassword = ''
+      }
+    },
+    changePassword() {
+      if (!this.newPassword || this.newPassword.length < 3) {
+        this.$message.warning('密码至少3位')
+        return
+      }
+      // 调用后端修改密码
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      fetch('/api/admin/users/' + user.username + '/reset-password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('token')
+        },
+        body: JSON.stringify({ password: this.newPassword })
+      }).then(r => r.json()).then(res => {
+        if (res.code === 200) {
+          this.$message.success('密码已修改')
+          this.pwdDialogVisible = false
+        } else {
+          this.$message.error(res.message || '修改失败')
+        }
+      }).catch(() => this.$message.error('网络错误'))
     },
     connectWebSocket() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -136,6 +182,11 @@ export default {
   margin: 0; padding: 0; box-sizing: border-box;
 }
 
+html, body, #app {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: var(--font-body);
   font-size: var(--text-base);
@@ -143,95 +194,154 @@ body {
   color: var(--color-text-primary);
 }
 
-.app-container { height: 100vh; }
-
-/* ===== Sidebar ===== */
-.sidebar {
-  background: var(--color-sidebar-bg) !important;
-  border-right: 1px solid var(--color-border);
-  display: flex; flex-direction: column; overflow-y: auto;
+/* ===== App Shell ===== */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.logo {
-  padding: 14px 14px 12px;
+/* ===== Top Bar ===== */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 48px;
+  padding: 0 var(--space-4);
+  background: var(--color-bg-elevated);
   border-bottom: 1px solid var(--color-border);
-  color: var(--color-sidebar-text);
-  font-size: 11px; font-weight: 600;
-  letter-spacing: 0.15em; text-align: center;
+  flex-shrink: 0;
 }
 
-/* User info */
-.user-info {
-  padding: 10px 14px 8px;
-  border-bottom: 1px solid var(--color-border);
-  text-align: center;
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
-.user-name {
-  color: var(--color-sidebar-text);
-  font-size: var(--text-sm); font-weight: 500;
+.back-link {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
 }
 
-.user-role {
-  color: var(--color-sidebar-text); opacity: 0.7;
-  font-size: var(--text-xs); margin-top: 2px;
+.back-link:hover { color: var(--color-primary); }
+
+.topbar-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
-.auditor-tag {
-  margin-top: 4px;
-  display: inline-block;
-  padding: 0 6px; height: 18px; line-height: 18px;
-  font-size: 10px; color: var(--color-warning);
-  background: var(--color-warning-bg);
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.topbar-time {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ===== LIVE Badge ===== */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(220,38,38,0.12);
+  color: #DC2626;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 2px 8px;
   border-radius: 2px;
+  border: 1px solid rgba(220,38,38,0.25);
 }
 
-.sidebar-menu { border-right: none !important; flex: 1; }
-.sidebar-menu .el-menu-item {
-  font-family: var(--font-body);
-  font-size: var(--text-base); height: 40px; line-height: 40px;
-  margin: 0; border-radius: 0;
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #DC2626;
+  display: inline-block;
+  animation: live-pulse 1.5s ease-in-out infinite;
 }
 
-.sidebar-menu .el-menu-item:hover { background: var(--color-bg-surface) !important; }
-.sidebar-menu .el-menu-item.is-active {
-  background: var(--color-bg-surface) !important;
-  border-left: 2px solid var(--color-primary);
-  color: var(--color-primary) !important;
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 2px #DC2626; }
+  50% { opacity: 0.4; box-shadow: 0 0 8px #DC2626; }
 }
 
-/* Sidebar bottom */
-.sidebar-bottom { border-top: 1px solid var(--color-border); }
-
-.system-status {
-  padding: 8px 14px;
-  display: flex; align-items: center; gap: 6px;
-  font-size: var(--text-xs); color: var(--color-sidebar-text); opacity: 0.7;
+.ws-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.logout-btn {
-  padding: 6px 14px;
-  display: flex; align-items: center; gap: 6px;
-  font-size: var(--text-xs); color: var(--color-sidebar-text);
+.ws-dot.online { background: var(--color-success); }
+.ws-dot.offline { background: var(--color-danger); }
+
+/* ===== User Dropdown Button ===== */
+.user-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  transition: background 0.2s;
+  min-width: 160px;
+  justify-content: center;
 }
 
-.logout-btn:hover { color: var(--color-danger); }
+.user-btn:hover { background: var(--color-bg-surface); }
+.user-btn .el-icon-user-solid { font-size: 16px; color: var(--color-primary); }
+.user-btn .el-icon-arrow-down { font-size: 10px; color: var(--color-text-muted); }
 
-.dot {
-  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+/* ===== Dropdown Items ===== */
+.dd-user-info {
+  text-align: center;
+  padding: 4px 0;
 }
 
-.dot.online { background: var(--color-success); }
-.dot.offline { background: var(--color-danger); }
+.dd-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.dd-role {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.dd-section-label span {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+}
+
+.dd-theme-row {
+  padding: 4px 0 !important;
+}
 
 /* ===== Main Content ===== */
 .main-content {
+  flex: 1;
+  min-height: 0;
   background: var(--color-bg-base);
-  padding: var(--space-4); overflow-y: auto;
+  padding: var(--space-4);
+  overflow: hidden;
 }
 
 /* ===== Global Element UI Overrides ===== */
+.el-dropdown-menu__item i { margin-right: 6px; }
+
 .el-table, .el-table__body-wrapper, .el-table__header-wrapper {
   background: var(--color-bg-elevated) !important;
   color: var(--color-text-secondary) !important;
@@ -341,4 +451,5 @@ body {
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--color-bg-deep); }
 ::-webkit-scrollbar-thumb { background: var(--color-border-light); border-radius: 2px; }
+
 </style>

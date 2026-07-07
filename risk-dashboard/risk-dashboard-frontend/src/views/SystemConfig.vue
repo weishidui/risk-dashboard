@@ -147,7 +147,7 @@ function buildRules() {
 </script>
 
 <style scoped>
-.system-config { min-height: 100%; }
+.system-config { height: 100%; overflow-y: auto; }
 
 .page-header {
   display: flex;

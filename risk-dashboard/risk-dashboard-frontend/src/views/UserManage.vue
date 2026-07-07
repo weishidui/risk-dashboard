@@ -1,19 +1,23 @@
 <template>
   <div class="user-manage">
     <div class="page-header">
+      <span></span>
       <h2 class="page-title">账号管理</h2>
-      <span class="header-sub">共 <b>{{ users.length }}</b> 个用户</span>
+      <div class="header-right">
+        <span class="header-sub">共 <b>{{ users.length }}</b> 个用户</span>
+        <el-button size="mini" icon="el-icon-back" @click="$router.push('/dashboard')">返回主页</el-button>
+      </div>
     </div>
 
     <div class="panel">
-      <el-table :data="users" stripe size="mini">
+      <el-table :data="users" stripe size="mini" style="width:100%">
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="username" label="用户名" width="150" />
-        <el-table-column prop="role" label="角色" width="120">
+        <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column prop="role" label="角色" min-width="100">
           <template slot-scope="{ row }"><el-tag :type="roleTag(row.role)" size="mini">{{ roleLabel(row.role) }}</el-tag></template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="200" v-if="!isAuditor">
+        <el-table-column prop="createTime" label="创建时间" min-width="150" />
+        <el-table-column label="操作" min-width="180" v-if="!isAuditor">
           <template slot-scope="{ row }">
             <el-button size="mini" type="warning" @click="showPwd(row)">重置密码</el-button>
             <el-button size="mini" type="danger" @click="doDel(row)" :disabled="row.username === 'admin'">删除</el-button>
@@ -66,9 +70,10 @@ export default {
 
 <style scoped>
 .user-manage { height: 100%; overflow-y: auto; }
-.page-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--color-border); }
+.page-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--color-border); }
+.header-right { display: flex; align-items: center; gap: var(--space-3); }
 .page-title { color: var(--color-text-primary); font-size: var(--text-lg); font-weight: 600; margin: 0; }
 .header-sub { color: var(--color-text-muted); font-size: var(--text-sm); }
 .header-sub b { color: var(--color-text-secondary); }
-.panel { background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-3); }
+.panel { max-width: 750px; margin: 0 auto; background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-3); }
 </style>

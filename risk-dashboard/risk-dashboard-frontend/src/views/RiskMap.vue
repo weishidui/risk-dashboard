@@ -597,7 +597,7 @@ export default {
 </script>
 
 <style scoped>
-.risk-map-page { min-height: 100%; }
+.risk-map-page { height: 100%; overflow-y: auto; }
 
 .page-header {
   display: flex;

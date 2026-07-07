@@ -1,20 +1,9 @@
 <template>
   <div class="dashboard">
-    <!-- Header -->
-    <div class="page-header">
-      <div class="header-left">
-        <span class="live-badge"><span class="live-dot"></span>LIVE</span>
-        <h2 class="page-title">实时风险监控仪表盘</h2>
-      </div>
-      <div class="header-right">
-        <span class="ws-status" :class="{ connected: wsConnected }">数据流 {{ wsConnected ? '●' : '○' }}</span>
-        <span class="meta-refresh">{{ lastRefresh }}</span>
-      </div>
-    </div>
-
     <!-- Metric Cards Strip -->
     <div class="metric-strip">
       <div class="metric-card" v-for="card in metricCards" :key="card.key" :class="card.variant">
+        <router-link v-if="card.key === 'total'" to="/transaction" class="card-chevron">&gt;</router-link>
         <div class="card-accent"></div>
         <div class="card-body">
           <div class="card-label">{{ card.label }}</div>
@@ -592,8 +581,8 @@ export default {
     },
     fmtK(n) {
       if (n == null) return '0'
-      if (n >= 10000) return (n / 10000).toFixed(1) + '万'
-      return Number(n).toLocaleString()
+      const [int, dec] = Number(n).toFixed(2).split('.')
+      return int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + dec
     },
     formatTrend(v) {
       return Math.abs(v) + '%'
@@ -617,7 +606,7 @@ export default {
 </script>
 
 <style scoped>
-.dashboard { min-height: 100%; padding-bottom: var(--space-4); }
+.dashboard { height: 100%; overflow-y: auto; padding-bottom: var(--space-4); }
 
 /* ========== Header ========== */
 .page-header {
@@ -641,26 +630,6 @@ export default {
   font-weight: 600;
   margin: 0;
 }
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.meta-refresh {
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  font-family: var(--font-mono);
-}
-
-.ws-status {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-}
-
-.ws-status.connected { color: var(--color-success); }
 
 /* ========== Live Badge ========== */
 .live-badge {
@@ -691,6 +660,21 @@ export default {
 }
 
 /* ========== Metric Cards ========== */
+.card-chevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  opacity: 0.35;
+  transition: opacity 0.2s, color 0.2s;
+  line-height: 1;
+}
+
+.card-chevron:hover { opacity: 1; color: var(--color-primary); }
 .metric-strip {
   display: grid;
   grid-template-columns: repeat(5, 1fr);

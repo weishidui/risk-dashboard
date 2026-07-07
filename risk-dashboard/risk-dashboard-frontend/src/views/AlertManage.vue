@@ -47,11 +47,11 @@
 
     <div class="panel" style="margin-top:10px;">
       <el-table :data="alertList" stripe size="mini" @row-click="showDetail">
-        <el-table-column prop="alertId" label="告警编号" width="200" />
-        <el-table-column prop="transId" label="交易流水" width="200" />
-        <el-table-column prop="userId" label="用户" width="100" />
-        <el-table-column prop="hitRules" label="触发规则" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="amount" label="金额" width="110" sortable>
+        <el-table-column prop="alertId" label="告警编号" width="170" />
+        <el-table-column prop="transId" label="交易流水" width="170" />
+        <el-table-column prop="userId" label="用户" width="80" />
+        <el-table-column prop="hitRules" label="触发规则" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="amount" label="金额" width="100" sortable>
           <template slot-scope="{ row }">
             <span class="mono-num">¥{{ row.amount?.toFixed(2) }}</span>
           </template>
@@ -79,7 +79,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="时间" width="155" sortable />
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="160">
           <template slot-scope="{ row }">
             <!-- 审计员：只读状态文字 -->
             <template v-if="isAuditor">
@@ -248,7 +248,7 @@ export default {
 </script>
 
 <style scoped>
-.alert-manage { min-height: 100%; }
+.alert-manage { height: 100%; overflow-y: auto; }
 
 .page-header {
   display: flex;

@@ -404,7 +404,7 @@ export default {
 </script>
 
 <style scoped>
-.data-analysis { min-height: 100%; }
+.data-analysis { height: 100%; overflow-y: auto; }
 
 .page-header {
   display: flex;

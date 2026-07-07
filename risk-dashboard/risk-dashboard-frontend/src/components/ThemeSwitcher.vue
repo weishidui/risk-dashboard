@@ -141,7 +141,6 @@ export default {
 <style scoped>
 .theme-switcher {
   padding: 6px 10px;
-  border-top: 1px solid var(--color-border);
 }
 
 .mode-row {
@@ -156,15 +155,16 @@ export default {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-sidebar-text);
+  color: var(--color-text-secondary);
   font-size: 10px;
   cursor: pointer;
   font-family: inherit;
+  transition: all 0.2s;
 }
 
 .mode-btn:hover {
-  color: #fff;
-  border-color: var(--color-sidebar-text);
+  color: var(--color-text-primary);
+  border-color: var(--color-primary);
 }
 
 .mode-btn.active {
@@ -183,15 +183,16 @@ export default {
   width: 14px; height: 14px;
   border-radius: 50%;
   cursor: pointer;
-  border: 1px solid transparent;
-  opacity: 0.6;
+  border: 2px solid transparent;
+  opacity: 0.65;
   display: inline-block;
+  transition: all 0.2s;
 }
 
-.dot:hover { opacity: 1; }
+.dot:hover { opacity: 1; transform: scale(1.15); }
 
 .dot.on {
-  border-color: var(--color-sidebar-text);
+  border-color: var(--color-text-secondary);
   opacity: 1;
 }
 </style>

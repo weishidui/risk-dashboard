@@ -25,55 +25,55 @@
         <span class="panel-sub">交易类型: <b>同行/跨行/对公</b> | 支付渠道: <b>银行卡/余额/微信/支付宝</b></span>
       </div>
       <el-table :data="transactions" stripe size="mini" max-height="520" style="width:100%">
-        <el-table-column prop="transId" label="交易流水号" width="200" fixed />
-        <el-table-column prop="userId" label="用户" width="90" />
-        <el-table-column prop="amount" label="金额" width="100" sortable>
+        <el-table-column prop="transId" label="交易流水号" width="150" />
+        <el-table-column prop="userId" label="用户" width="120" />
+        <el-table-column prop="amount" label="金额" width="120" sortable>
           <template slot-scope="{ row }">
             <span :class="{ 'amount-high': row.amount > 10000 }" class="mono-num">
               ¥{{ row.amount?.toFixed(2) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="transType" label="交易类型" width="80" />
-        <el-table-column prop="payChannel" label="支付渠道" width="80">
+        <el-table-column prop="transType" label="交易类型" width="100" />
+        <el-table-column prop="payChannel" label="支付渠道" width="100">
           <template slot-scope="{ row }">
             <el-tag v-if="row.payChannel" size="mini" type="info">{{ payChannelLabel(row.payChannel) }}</el-tag>
             <span v-else class="text-muted">--</span>
           </template>
         </el-table-column>
-        <el-table-column prop="city" label="城市" width="70" />
-        <el-table-column prop="counterpartyId" label="收款方" width="100" show-overflow-tooltip />
-        <el-table-column prop="deviceId" label="设备指纹" width="120" show-overflow-tooltip />
-        <el-table-column prop="osType" label="系统" width="80">
+        <el-table-column prop="city" label="城市" width="100" />
+        <el-table-column prop="counterpartyId" label="收款方" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="deviceId" label="设备指纹" width="120"  />
+        <el-table-column prop="osType" label="系统" width="200">
           <template slot-scope="{ row }">
             <span class="text-muted">{{ row.osType }} {{ row.osVersion }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="networkType" label="网络" width="60">
+        <el-table-column prop="networkType" label="网络" width="120">
           <template slot-scope="{ row }">
             <el-tag v-if="row.networkType === 'VPN'" type="danger" size="mini" effect="dark">VPN</el-tag>
             <span v-else class="text-muted">{{ row.networkType }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="ipAddress" label="IP" width="110" />
-        <el-table-column prop="devScore" label="设备分" width="70" sortable>
+        <el-table-column prop="ipAddress" label="IP" width="150" />
+        <el-table-column prop="devScore" label="设备分" width="150" sortable>
           <template slot-scope="{ row }">
             <el-tag :type="devScoreType(row.devScore)" size="mini" effect="dark">{{ row.devScore }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="loginFailCount" label="登录失败" width="70">
+        <el-table-column prop="loginFailCount" label="登录失败" width="120">
           <template slot-scope="{ row }">
             <el-tag v-if="row.loginFailCount > 0" type="warning" size="mini" effect="dark">{{ row.loginFailCount }}次</el-tag>
             <span v-else class="text-muted">0</span>
           </template>
         </el-table-column>
-        <el-table-column prop="inputMethod" label="输入方式" width="70">
+        <el-table-column prop="inputMethod" label="输入方式" width="120">
           <template slot-scope="{ row }">
             <el-tag v-if="row.inputMethod === 'paste'" type="warning" size="mini">粘贴</el-tag>
             <span v-else class="text-muted">{{ row.inputMethod }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="rootJailbreak" label="越狱" width="50">
+        <el-table-column prop="rootJailbreak" label="越狱" width="120">
           <template slot-scope="{ row }">
             <el-tag v-if="row.rootJailbreak === 1" type="danger" size="mini">是</el-tag>
             <span v-else class="text-muted">否</span>
@@ -156,7 +156,7 @@ export default {
 </script>
 
 <style scoped>
-.transaction-flow { min-height: 100%; }
+.transaction-flow { height: 100%; overflow-y: auto; }
 
 .page-header {
   display: flex;
