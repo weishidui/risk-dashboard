@@ -221,13 +221,4 @@ CREATE TABLE IF NOT EXISTS sys_user (
 -- 8. 演示数据
 -- ----------------------------
 INSERT INTO sys_user (username, password, role) VALUES ('admin', 'admin123', 'admin');
-INSERT INTO risk_alert (alert_id, trans_id, user_id, hit_rules, amount, final_score,
-    risk_level, city, alert_loc, status, counterparty_id, ip_address, is_new_device, is_new_counterparty)
-VALUES
-('ALT001', 'TXN001', 'USER1001', 'C1金额突变', 15000.00, 35, '低危', '北京', '北京', 'closed', 'CP_北京', '10.0.1.1', 0, 0),
-('ALT002', 'TXN002', 'USER1002', 'D1地理偏离;I1_VPN代理', 8000.00, 55, '中危', '上海', '上海', 'pending', 'CP_上海', '172.16.0.1', 1, 0),
-('ALT003', 'TXN003', 'USER1003', 'C1金额突变;D2异地瞬移;I1_VPN代理', 50000.00, 95, '高危', '深圳', '深圳', 'processing', 'CP_深圳', '45.xx.xx.xx', 0, 1),
-('ALT004', 'TXN004', 'USER1004', 'I5低安全分设备', 3000.00, 30, '低危', '广州', '广州', 'closed', 'CP_广州', '10.0.2.15', 0, 0),
-('ALT005', 'TXN005', 'USER1005', 'C1金额突变;G5切换支付渠道', 25000.00, 65, '中危', '杭州', '杭州', 'pending', 'CP_杭州', '192.168.1.100', 0, 0),
-('ALT006', 'TXN006', 'USER1006', 'A1账户盗用;D2异地瞬移;I1_VPN代理', 12000.00, 135, '极度危险', '成都', '成都', 'pending', 'CP_成都', '103.10.10.1', 1, 1),
-('ALT007', 'TXN007', 'USER1007', 'D1地理偏离', 5000.00, 22, '低危', '武汉', '武汉', 'closed', 'CP_武汉', '10.0.3.1', 0, 0);
+-- 告警和交易数据由 DataInitializer 统一生成，此处不再硬编码

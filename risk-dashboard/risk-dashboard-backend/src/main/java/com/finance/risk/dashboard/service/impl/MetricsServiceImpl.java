@@ -13,6 +13,7 @@ import com.finance.risk.dashboard.vo.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -54,6 +55,9 @@ public class MetricsServiceImpl implements MetricsService {
     private static final DateTimeFormatter DB_TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final long ONE_HOUR_MS = 60 * 60 * 1000L;
     private static final long ONE_DAY_MS = 24 * ONE_HOUR_MS;
+
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
 
     /** 系统启动时间 */
     private final long startupTime = System.currentTimeMillis();
@@ -151,8 +155,10 @@ public class MetricsServiceImpl implements MetricsService {
     // ==================== 仪表盘数据构建方法 ====================
 
     private Long estimateActiveUsers() {
-        long since5min = System.currentTimeMillis() - 5 * 60 * 1000;
-        return transactionService.countDistinctUsers(since5min, System.currentTimeMillis());
+        // 用 24 小时窗口，确保演示数据能被统计到
+        long since24h = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
+        Long count = transactionService.countDistinctUsers(since24h, System.currentTimeMillis());
+        return count != null ? count : 0L;
     }
 
     private List<TrendPointVO> buildTransactionTrend(long since, long now) {
@@ -269,6 +275,8 @@ public class MetricsServiceImpl implements MetricsService {
 
     @Scheduled(fixedRate = 60000)
     public void snapshotMetrics() {
+        // 开发模式跳过定时采集，由 DataInitializer 统一生成
+        if (!"prod".equals(activeProfile)) return;
         try {
             String since = LocalDateTime.now().minusHours(1).format(DB_TIME_FMT);
             List<AlertDao.RiskLevelCount> levels = alertDao.countByRiskLevel(since);

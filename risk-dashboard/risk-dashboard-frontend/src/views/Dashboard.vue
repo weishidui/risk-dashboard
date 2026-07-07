@@ -168,8 +168,7 @@ export default {
         mkCard('pass', '放行率', passRate + '%', 'success', 'passRate'),
         mkCard('block', '拦截率', blockRate + '%', 'danger', 'blockRate'),
         mkCard('users', '活跃用户', this.fmtNum(d.activeUsers || 0), 'info', 'activeUsers'),
-        mkCard('score', '平均风险评分', d.avgRiskScore ? d.avgRiskScore.toFixed(1) : '0', 'warning', 'avgRiskScore'),
-        mkCard('latency', '平均延迟', (d.avgLatency || 0).toFixed(0) + 'ms', 'neutral', 'avgLatency')
+        mkCard('score', '平均风险评分', d.avgRiskScore ? d.avgRiskScore.toFixed(1) : '0', 'warning', 'avgRiskScore')
       ]
     },
     geoAlertCount() {
@@ -272,20 +271,25 @@ export default {
     },
 
     /* ========== Map Chart ========== */
+    mapColors() {
+      const isLight = (localStorage.getItem('rd-mode') || 'dark') === 'light'
+      return {
+        geoFill: isLight ? '#F0F0F0' : '#162339',
+        geoBorder: isLight ? '#D9D9D9' : '#1C2B42',
+        tooltipBg: isLight ? '#FFFFFF' : '#121E33',
+        tooltipText: isLight ? 'rgba(0,0,0,0.88)' : '#D8DFE8',
+        emphasisFill: isLight ? '#E0E0E0' : '#1A3050',
+        labelColor: isLight ? 'rgba(0,0,0,0.65)' : '#D8DFE8'
+      }
+    },
+
     renderMapChart() {
       const el = this.$refs.mapChart
       if (!el || !this.mapReady) return
       if (!this.charts.map) this.charts.map = echarts.init(el)
 
       const geoAlerts = this.dashboardData?.geoAlerts || []
-      const cityDist = this.dashboardData?.cityDistribution || []
-
-      // Build province risk map from city distribution
-      const provMap = {}
-      cityDist.forEach(d => {
-        const prov = d.name
-        if (prov) provMap[prov] = (provMap[prov] || 0) + (d.value || 0)
-      })
+      const mc = this.mapColors()
 
       // Build scatter data: color by risk level
       const scatterData = geoAlerts.map(a => ({
@@ -304,9 +308,9 @@ export default {
       this.charts.map.setOption({
         tooltip: {
           trigger: 'item',
-          backgroundColor: '#0F1A2C',
-          borderColor: '#1C2B42',
-          textStyle: { color: '#D8DFE8', fontSize: 11 },
+          backgroundColor: mc.tooltipBg,
+          borderColor: mc.geoBorder,
+          textStyle: { color: mc.tooltipText, fontSize: 11 },
           formatter: function(p) {
             if (p.seriesType === 'effectScatter' || p.seriesType === 'scatter') {
               const d = p.data
@@ -327,12 +331,12 @@ export default {
           aspectScale: 0.82,
           label: { show: false },
           emphasis: {
-            label: { show: true, color: '#D8DFE8', fontSize: 11 },
-            itemStyle: { areaColor: '#1A3050' }
+            label: { show: true, color: mc.labelColor, fontSize: 11 },
+            itemStyle: { areaColor: mc.emphasisFill }
           },
           itemStyle: {
-            areaColor: '#111D32',
-            borderColor: '#253652',
+            areaColor: mc.geoFill,
+            borderColor: mc.geoBorder,
             borderWidth: 1
           }
         },
@@ -689,7 +693,7 @@ export default {
 /* ========== Metric Cards ========== */
 .metric-strip {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   margin-bottom: 0;
 }
@@ -954,7 +958,7 @@ export default {
 
 /* ========== Responsive ========== */
 @media (max-width: 1400px) {
-  .metric-strip { grid-template-columns: repeat(3, 1fr); }
+  .metric-strip { grid-template-columns: repeat(5, 1fr); }
   .map-chart-box, .map-loading { min-height: 280px; }
 }
 </style>
