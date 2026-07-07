@@ -1,0 +1,30 @@
+# Maven build
+target/
+*.class
+*.jar
+*.war
+
+# Node
+node_modules/
+dist/
+.npm/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.log
+
+# Claude
+.claude/
