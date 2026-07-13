@@ -8,6 +8,7 @@ import com.finance.risk.dashboard.dto.MetricsInputDTO;
 import com.finance.risk.dashboard.entity.MetricsSnapshot;
 import com.finance.risk.dashboard.service.AlertService;
 import com.finance.risk.dashboard.service.MetricsService;
+import com.finance.risk.dashboard.service.RealtimeMetricsService;
 import com.finance.risk.dashboard.service.TransactionService;
 import com.finance.risk.dashboard.vo.*;
 import org.slf4j.Logger;
@@ -51,6 +52,9 @@ public class MetricsServiceImpl implements MetricsService {
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
+    @Resource
+    private RealtimeMetricsService realtimeMetricsService;
+
     private static final SimpleDateFormat SDF_HM = new SimpleDateFormat("HH:mm");
     private static final DateTimeFormatter DB_TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final long ONE_HOUR_MS = 60 * 60 * 1000L;
@@ -79,27 +83,36 @@ public class MetricsServiceImpl implements MetricsService {
 
     @Override
     public MetricsSnapshot getLatestMetrics() {
-        // 先从Redis读取
-        try {
-            Object cached = redisTemplate.opsForValue().get(Constants.REDIS_LATEST_METRICS);
-            if (cached != null) {
-                return JSON.parseObject(cached.toString(), MetricsSnapshot.class);
-            }
-        } catch (Exception e) {
-            log.warn("Redis缓存读取失败: {}", e.getMessage());
-        }
         return metricsDao.findLatest();
+    }
+
+    @Override
+    public RealtimeMetricsVO getRealtimeMetrics() {
+        try {
+            return realtimeMetricsService.getLatestMetrics();
+        } catch (Exception e) {
+            log.warn("Redis 实时指标读取失败，回退到历史快照: {}", e.getMessage());
+            return RealtimeMetricsVO.builder().available(false).build();
+        }
     }
 
     @Override
     public DashboardVO getDashboardData() {
         long now = System.currentTimeMillis();
         MetricsSnapshot metrics = null;
+        RealtimeMetricsVO realtimeMetrics = getRealtimeMetrics();
         try { metrics = getLatestMetrics(); } catch (Exception e) { log.warn("获取指标失败: {}", e.getMessage()); }
 
         // 1. 核心指标
         DashboardVO.DashboardVOBuilder builder = DashboardVO.builder();
-        if (metrics != null) {
+        if (realtimeMetrics.isAvailable()) {
+            builder.totalTransactions(realtimeMetrics.getTotalTransactions())
+                   .passCount(realtimeMetrics.getPassCount())
+                   .verifyCount(realtimeMetrics.getVerifyCount())
+                   .blockCount(realtimeMetrics.getBlockCount())
+                   .avgRiskScore(realtimeMetrics.getAvgRiskScore())
+                   .avgLatency(0.0);
+        } else if (metrics != null) {
             builder.totalTransactions(metrics.getTotalTransactions())
                    .passCount(metrics.getPassCount())
                    .verifyCount(metrics.getVerifyCount())
@@ -113,7 +126,7 @@ public class MetricsServiceImpl implements MetricsService {
         }
 
         // 活跃用户 (近5分钟内有过交易的用户)
-        builder.activeUsers(estimateActiveUsers());
+        builder.activeUsers(realtimeMetrics.isAvailable() ? realtimeMetrics.getActiveUsers() : estimateActiveUsers());
         builder.uptimeSeconds((now - startupTime) / 1000);
 
         // 2. 趋势数据 (近24小时)
@@ -128,15 +141,18 @@ public class MetricsServiceImpl implements MetricsService {
         }
 
         // 3. 分布数据
-        builder.riskLevelDistribution(buildRiskLevelDist());
-        builder.ruleTypeDistribution(buildRuleTypeDist());
-        builder.cityDistribution(transactionService.countByCity(10));
+        builder.riskLevelDistribution(realtimeMetrics.isAvailable()
+                ? realtimeMetrics.getRiskLevelDistribution() : buildRiskLevelDist());
+        builder.ruleTypeDistribution(realtimeMetrics.isAvailable()
+                ? realtimeMetrics.getRuleTypeDistribution() : buildRuleTypeDist());
+        builder.cityDistribution(realtimeMetrics.isAvailable()
+                ? realtimeMetrics.getCityDistribution() : transactionService.countByCity(10));
 
         // 4. 地理告警
         builder.geoAlerts(buildGeoAlerts());
 
         // 5. 最新告警
-        builder.recentAlerts(alertService.getRecentAlerts(10));
+        builder.recentAlerts(alertService.getRecentSevereAlerts(30));
 
         return builder.build();
     }
@@ -275,53 +291,9 @@ public class MetricsServiceImpl implements MetricsService {
 
     @Scheduled(fixedRate = 60000)
     public void snapshotMetrics() {
-        // 开发模式跳过定时采集，由 DataInitializer 统一生成
         if (!"prod".equals(activeProfile)) return;
         try {
-            String since = LocalDateTime.now().minusHours(1).format(DB_TIME_FMT);
-            List<AlertDao.RiskLevelCount> levels = alertDao.countByRiskLevel(since);
-            List<AlertDao.RuleCount> rules = alertDao.countByHitRule(since);
-
-            long high = 0, mid = 0, low = 0;
-            for (AlertDao.RiskLevelCount l : levels) {
-                if ("高危".equals(l.getRiskLevel())) high = l.getCnt();
-                else if ("中危".equals(l.getRiskLevel())) mid = l.getCnt();
-                else low = l.getCnt();
-            }
-
-            // 真实交易量：从 transaction_history 表计数
-            long now = System.currentTimeMillis();
-            long sinceTs = now - 3600000L;
-            long total = transactionService.countByTimeRange(sinceTs, now);
-
-            long envRisk = 0, amtRisk = 0, teleRisk = 0, geoRisk = 0;
-            for (AlertDao.RuleCount r : rules) {
-                String rule = r.getHitRules();
-                if (rule != null) {
-                    if (rule.contains("环境")) envRisk += r.getCnt();
-                    if (rule.contains("金额")) amtRisk += r.getCnt();
-                    if (rule.contains("瞬移")) teleRisk += r.getCnt();
-                    if (rule.contains("地理")) geoRisk += r.getCnt();
-                }
-            }
-
-            long pass = transactionService.countPassByDevScore(sinceTs, now);
-            long verify = mid;
-            long block = transactionService.countBlockByDevScore(sinceTs, now);
-            double avgScore = (high + mid + low) > 0 ? (high * 90.0 + mid * 65.0 + low * 20.0) / (high + mid + low) : 0;
-            Double avgLat = transactionService.avgClickDuration(sinceTs, now);
-
-            MetricsSnapshot snap = MetricsSnapshot.builder()
-                    .snapshotTime(now)
-                    .totalTransactions(total)
-                    .passCount(pass).verifyCount(verify).blockCount(block)
-                    .highRiskCount(high).mediumRiskCount(mid).lowRiskCount(low)
-                    .avgRiskScore(Math.round(avgScore * 100.0) / 100.0)
-                    .envRiskCount(envRisk).amountRiskCount(amtRisk)
-                    .teleportRiskCount(teleRisk).geoRiskCount(geoRisk)
-                    .avgLatency(avgLat != null ? avgLat : 300.0)
-                    .build();
-            metricsDao.insert(snap);
+            realtimeMetricsService.snapshotPreviousMinute();
         } catch (Exception e) {
             log.error("指标快照采集失败: {}", e.getMessage());
         }

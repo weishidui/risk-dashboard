@@ -8,7 +8,7 @@ spring:
   # ---- MySQL 数据库 ----
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.140.104:3306/risk_control?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://192.168.125.104:3306/risk_control?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: 123456
     druid:
@@ -43,7 +43,7 @@ spring:
 
   # ---- Redis 配置 (存储用户画像缓存和实时数据) ----
   redis:
-    host: 192.168.140.104
+    host: 192.168.125.104
     port: ${REDIS_PORT:6379}
     password: 123456
     database: 0
@@ -66,3 +66,17 @@ logging:
     name: risk-dashboard.log
     max-size: 100MB
     max-history: 30
+
+# ---- 离线分析 HDFS 产物状态检查 ----
+risk:
+  offline:
+    hdfs:
+      base-path: /user/hive/warehouse/risk_control.db
+      java-home: /home/master0/jdk1.8.0_171
+      hadoop-home: /home/master0/hadoop-2.7.6
+      command-timeout-ms: 60000
+      ssh:
+        host: 192.168.125.100
+        port: 22
+        username: master0
+        password: 123456

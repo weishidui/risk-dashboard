@@ -53,6 +53,47 @@ const routes = [
     path: '/config', name: 'Config',
     component: () => import('@/views/SystemConfig.vue'),
     meta: { title: '评分规则' }
+  },
+  // ========== 离线分析模块 ==========
+  {
+    path: '/offline-overview', name: 'OfflineOverview',
+    component: () => import('@/views/OfflineOverview.vue'),
+    meta: { title: '离线分析总览' }
+  },
+  {
+    path: '/profiles', name: 'Profiles',
+    component: () => import('@/views/UserProfile.vue'),
+    meta: { title: '用户画像浏览' }
+  },
+  {
+    path: '/high-risk-users', name: 'HighRiskUsers',
+    component: () => import('@/views/HighRiskUsers.vue'),
+    meta: { title: '高风险用户' }
+  },
+  {
+    path: '/device-risk', name: 'DeviceRisk',
+    component: () => import('@/views/DeviceRisk.vue'),
+    meta: { title: '设备风险分析' }
+  },
+  {
+    path: '/counterparty-risk', name: 'CounterpartyRisk',
+    component: () => import('@/views/CounterpartyRisk.vue'),
+    meta: { title: '收款方风险分析' }
+  },
+  {
+    path: '/transaction-stats', name: 'TransactionStats',
+    component: () => import('@/views/TransactionStats.vue'),
+    meta: { title: '交易行为统计' }
+  },
+  {
+    path: '/blacklist', name: 'Blacklist',
+    component: () => import('@/views/CounterpartyBlacklist.vue'),
+    meta: { title: '收款方黑名单' }
+  },
+  {
+    path: '/chain', name: 'Chain',
+    component: () => import('@/views/TransChain.vue'),
+    meta: { title: '资金链路追踪' }
   }
 ]
 

@@ -20,9 +20,14 @@ public interface AlertService {
 
     List<AlertVO> getRecentAlerts(int limit);
 
+    List<AlertVO> getRecentSevereAlerts(int limit);
+
     List<Map<String, Object>> countByRiskLevel();
 
     List<Map<String, Object>> countByHitRule();
 
     List<Map<String, Object>> countHighRiskByCity(int limit);
+
+    /** 按规则类别(A-I)统计命中次数 */
+    List<Map<String, Object>> countByCategory();
 }

@@ -9,7 +9,6 @@ module.exports = defineConfig({
   devServer: {
     port: 8081,
     proxy: {
-      // 代理后端 API 请求 (解决跨域)
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true
@@ -21,10 +20,7 @@ module.exports = defineConfig({
   outputDir: 'dist',
   assetsDir: 'static',
 
-  // 不生成 source map (生产环境)
   productionSourceMap: false,
-
-  // 关闭 LintOnSave (可在开发时开启)
   lintOnSave: false,
 
   // 配置 webpack
@@ -34,5 +30,22 @@ module.exports = defineConfig({
         '@': require('path').resolve(__dirname, 'src')
       }
     }
+  },
+
+  // 修复 webpack 5 CopyPlugin 与 HtmlWebpackPlugin 对 index.html 的冲突
+  chainWebpack: config => {
+    config.plugin('copy').tap(args => {
+      const options = args[0]
+      if (options.patterns) {
+        options.patterns.forEach(pattern => {
+          if (!pattern.globOptions) pattern.globOptions = {}
+          if (!pattern.globOptions.ignore) pattern.globOptions.ignore = []
+          if (!pattern.globOptions.ignore.includes('**/index.html')) {
+            pattern.globOptions.ignore.push('**/index.html')
+          }
+        })
+      }
+      return args
+    })
   }
 })

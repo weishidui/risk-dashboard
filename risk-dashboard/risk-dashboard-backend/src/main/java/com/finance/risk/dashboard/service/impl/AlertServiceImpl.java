@@ -7,6 +7,7 @@ import com.finance.risk.dashboard.dto.AlertInputDTO;
 import com.finance.risk.dashboard.entity.AlertResult;
 import com.finance.risk.dashboard.service.AlertService;
 import com.finance.risk.dashboard.vo.AlertVO;
+import com.finance.risk.dashboard.websocket.RiskWebSocketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -30,6 +31,9 @@ public class AlertServiceImpl implements AlertService {
 
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Resource
+    private RiskWebSocketHandler riskWebSocketHandler;
 
     private static final DateTimeFormatter DB_TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -149,6 +153,7 @@ public class AlertServiceImpl implements AlertService {
             } catch (Exception e) {
                 log.error("Redis 缓存写入失败: {}", e.getMessage());
             }
+            pushRealtimeAlerts(entities);
         }
 
         return count;
@@ -161,7 +166,12 @@ public class AlertServiceImpl implements AlertService {
             return false;
         }
         AlertResult entity = convertToEntity(alert);
-        return alertDao.insert(entity) > 0;
+        boolean success = alertDao.insert(entity) > 0;
+        if (success) {
+            cacheAlert(entity);
+            pushRealtimeAlert(entity);
+        }
+        return success;
     }
 
     @Override
@@ -213,6 +223,12 @@ public class AlertServiceImpl implements AlertService {
     }
 
     @Override
+    public List<AlertVO> getRecentSevereAlerts(int limit) {
+        List<AlertResult> list = alertDao.findSevereList(limit);
+        return list.stream().map(this::convertToVO).collect(Collectors.toList());
+    }
+
+    @Override
     public List<Map<String, Object>> countByRiskLevel() {
         String sinceTime = LocalDateTime.now().minusDays(1).format(DB_TIME_FMT);
         List<AlertDao.RiskLevelCount> counts = alertDao.countByRiskLevel(sinceTime);
@@ -249,7 +265,10 @@ public class AlertServiceImpl implements AlertService {
             map.put("city", c.getAlertLoc());
             map.put("count", c.getCnt());
             map.put("riskLevel", c.getRiskLevel());
-            String coords = CITY_COORDS.getOrDefault(c.getAlertLoc(), "116.40,39.90");
+            String city = c.getAlertLoc();
+            String coords = CITY_COORDS.getOrDefault(city, null);
+            // 去掉市/省/自治州等后缀再试一次
+            if (coords == null) coords = CITY_COORDS.getOrDefault(stripSuffix(city), "116.40,39.90");
             String[] parts = coords.split(",");
             if (parts.length == 2) {
                 try {
@@ -259,6 +278,92 @@ public class AlertServiceImpl implements AlertService {
             }
             return map;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Map<String, Object>> countByCategory() {
+        String sinceTime = LocalDateTime.now().minusDays(7).format(DB_TIME_FMT);
+        // 查询最近7天所有告警的 hit_rules
+        List<AlertResult> alerts = alertDao.findList(null, null, sinceTime, null, 0, 10000);
+
+        // A-I 类别计数
+        String[] catLabels = {"A 账户安全", "B 设备安全", "C 金额特征", "D 地理位置", "E 时间特征", "F 收款方风险", "G 操作行为", "H 资金链路", "I 环境网络"};
+        int[] counts = new int[9];
+
+        for (AlertResult alert : alerts) {
+            String rules = alert.getHitRules();
+            if (rules == null || rules.isEmpty()) continue;
+            for (String rule : rules.split(";")) {
+                rule = rule.trim();
+                if (rule.isEmpty()) continue;
+                char c = rule.charAt(0);
+                if (c >= 'A' && c <= 'I') counts[c - 'A']++;
+            }
+        }
+
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (int i = 0; i < 9; i++) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("name", catLabels[i]);
+            item.put("value", counts[i]);
+            item.put("color", getCategoryColor((char) ('A' + i)));
+            list.add(item);
+        }
+        return list;
+    }
+
+    private String getCategoryColor(char cat) {
+        switch (cat) {
+            case 'A': return "#DC2626"; // 账户-红
+            case 'B': return "#F97316"; // 设备-橙
+            case 'C': return "#F59E0B"; // 金额-黄
+            case 'D': return "#3B82F6"; // 地理-蓝
+            case 'E': return "#8B5CF6"; // 时间-紫
+            case 'F': return "#EC4899"; // 收款方-粉
+            case 'G': return "#06B6D4"; // 操作-青
+            case 'H': return "#991B1B"; // 链路-深红
+            case 'I': return "#6B7280"; // 环境-灰
+            default: return "#909399";
+        }
+    }
+
+    private void cacheAlert(AlertResult entity) {
+        try {
+            redisTemplate.opsForList().leftPush(Constants.REDIS_ALERT_LIST, JSON.toJSONString(entity));
+            redisTemplate.opsForList().trim(Constants.REDIS_ALERT_LIST, 0, 199);
+        } catch (Exception e) {
+            log.warn("Redis alert cache write failed: {}", e.getMessage());
+        }
+    }
+
+    private void pushRealtimeAlerts(List<AlertResult> entities) {
+        for (AlertResult entity : entities) {
+            pushRealtimeAlert(entity);
+        }
+    }
+
+    private void pushRealtimeAlert(AlertResult entity) {
+        if (!isSevereRisk(entity)) {
+            return;
+        }
+        if (entity.getCreateTime() == null || entity.getCreateTime().isEmpty()) {
+            entity.setCreateTime(LocalDateTime.now().format(DB_TIME_FMT));
+        }
+        riskWebSocketHandler.broadcastAlert(JSON.toJSONString(convertToVO(entity)));
+    }
+
+    private boolean isSevereRisk(AlertResult entity) {
+        if (entity == null) {
+            return false;
+        }
+        String riskLevel = entity.getRiskLevel();
+        if (riskLevel != null) {
+            String trimmed = riskLevel.trim();
+            if ("极度危险".equals(trimmed) || "高危".equals(trimmed)) {
+                return true;
+            }
+        }
+        return entity.getFinalScore() != null && entity.getFinalScore() >= 80;
     }
 
     // ==================== 内部转换方法 ====================
@@ -277,10 +382,11 @@ public class AlertServiceImpl implements AlertService {
                 .status(dto.getStatus() != null ? dto.getStatus() : "pending")
                 .counterpartyId(dto.getCounterpartyId())
                 .ipAddress(dto.getIpAddress())
-                .isNewDevice(dto.getIsNewDevice())
-                .isNewCounterparty(dto.getIsNewCounterparty())
+                .isNewDevice(dto.getIsNewDevice() == null ? 0 : dto.getIsNewDevice())
+                .isNewCounterparty(dto.getIsNewCounterparty() == null ? 0 : dto.getIsNewCounterparty())
                 .chainId(dto.getChainId())
                 .rawJson(dto.getRawJson())
+                .createTime(LocalDateTime.now().format(DB_TIME_FMT))
                 .build();
     }
 
@@ -321,6 +427,12 @@ public class AlertServiceImpl implements AlertService {
             return userId;
         }
         return userId.substring(0, 3) + "****" + userId.substring(userId.length() - 4);
+    }
+
+    /** 去掉城市名后缀：市、地区、自治州、盟等 */
+    private String stripSuffix(String city) {
+        if (city == null) return null;
+        return city.replaceAll("(市|地区|自治州|自治县|盟|林区|新区|特别行政区)$", "");
     }
 
     private String getRiskColor(String riskLevel) {

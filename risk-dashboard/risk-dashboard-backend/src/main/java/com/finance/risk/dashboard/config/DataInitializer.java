@@ -46,9 +46,6 @@ public class DataInitializer implements CommandLineRunner {
             log.warn("sys_user 表初始化跳过: {}", e.getMessage());
         }
 
-        int refreshed = alertDao.refreshTimestamps();
-        log.info("时间戳刷新: {} 条历史告警", refreshed);
-
         long alertCount = alertDao.count(null, null, null, null);
         if (alertCount > 20) {
             log.info("告警数据已充足 ({} 条)，跳过初始化", alertCount);
