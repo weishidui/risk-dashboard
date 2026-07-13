@@ -68,6 +68,7 @@ const EVENT_TTL = 20 * 1000
 const PULSE_TTL = 2 * 1000
 const AGG_WINDOW = 5 * 60 * 1000
 const MAINLAND_MAP_NAME = 'china-risk-map-detail'
+const MAINLAND_MIN_LATITUDE = 18
 const PROVINCE_LEVELS = [
   { label: '1-2', color: '#5A2035' },
   { label: '3-4', color: '#A53D5E' },
@@ -165,12 +166,12 @@ export default {
     }, 1000)
     document.addEventListener('theme-changed', this.handleThemeChange)
   },
-    beforeDestroy() {
-      clearInterval(this.refreshTimer)
-      clearInterval(this.animationTimer)
-      clearTimeout(this.roamEndTimer)
-      document.removeEventListener('theme-changed', this.handleThemeChange)
-      if (this.mapChart) this.mapChart.dispose()
+  beforeDestroy() {
+    clearInterval(this.refreshTimer)
+    clearInterval(this.animationTimer)
+    clearTimeout(this.roamEndTimer)
+    document.removeEventListener('theme-changed', this.handleThemeChange)
+    if (this.mapChart) this.mapChart.dispose()
   },
   methods: {
     async initMaps() {
@@ -192,12 +193,13 @@ export default {
       }
     },
 
+    // ── GeoJSON 过滤：去掉南海诸岛小窗、去掉非大陆要素 ──
     withoutSouthChinaSeaInset(geoJson) {
       if (!geoJson?.features) return geoJson
       return {
         ...geoJson,
         features: geoJson.features
-          .filter(feature => feature?.properties?.name !== '境界线')
+          .filter(feature => !this.isSouthChinaSeaInset(feature) && this.isMainlandFeature(feature))
           .map(feature => this.withoutSouthChinaSeaPolygons(feature))
       }
     },
@@ -215,6 +217,15 @@ export default {
         ...feature,
         geometry: { ...feature.geometry, coordinates: mainIsland ? [mainIsland] : feature.geometry.coordinates }
       }
+    },
+
+    isSouthChinaSeaInset(feature) {
+      return feature?.properties?.name === '境界线'
+    },
+
+    isMainlandFeature(feature) {
+      const bounds = this.coordinateBounds(feature?.geometry?.coordinates)
+      return bounds && bounds.maxLat >= MAINLAND_MIN_LATITUDE
     },
 
     coordinateBounds(coordinates) {
@@ -270,6 +281,7 @@ export default {
       this.refreshing = false
     },
 
+    // ═══ 核心：实时视图刷新 ═══
     refreshRealtimeView() {
       if (!this.mapReady) return
       const alerts = this.currentProvince
@@ -297,6 +309,7 @@ export default {
         .map(alert => ({ ...alert, displayCity: this.cityRecord(this.alertCity(alert))?.city || this.alertCity(alert), displayTime: this.formatTime(this.alertTimestamp(alert)) }))
       const maxPage = Math.max(1, Math.ceil(this.highRiskAll.length / this.pageSize))
       if (this.highRiskPage > maxPage) this.highRiskPage = maxPage
+      // 用户正在拖拽/缩放地图 → 暂缓渲染，等操作结束后再补
       if (this.isRoaming) {
         this.deferredMapRender = true
         return
@@ -450,6 +463,7 @@ export default {
       })
     },
 
+    // ═══ 地图渲染 ═══
     renderMap(alerts, aggregatePoints) {
       const el = this.$refs.mapChart
       if (!el || !this.mapReady) return
@@ -470,6 +484,7 @@ export default {
         name,
         itemStyle: { areaColor: this.provinceColor(count), borderColor: theme.regionBorder }
       }))
+      // 仅当区域颜色真正变化时才更新 geo.regions，避免不必要的地图重绘
       const regionSignature = Object.entries(viewCounts)
         .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))
         .map(([name, count]) => `${name}:${count}`)
@@ -501,15 +516,13 @@ export default {
           {
             name: '近5分钟城市风险', type: 'scatter', coordinateSystem: 'geo', data: aggregatePoints,
             symbolSize: (value, params) => params.data.symbolSize,
-            animation: false,
-            animationDurationUpdate: 0,
+            animation: false, animationDurationUpdate: 0,
             itemStyle: { color: params => params.data.itemStyle.color, opacity: params => params.data.itemStyle.opacity, shadowBlur: 10, shadowColor: params => params.data.itemStyle.color }, zlevel: 1
           },
           {
             name: '20秒实时城市风险', type: 'scatter', coordinateSystem: 'geo', data: livePoints,
             symbolSize: (value, params) => params.data.symbolSize,
-            animation: false,
-            animationDurationUpdate: 0,
+            animation: false, animationDurationUpdate: 0,
             itemStyle: { color: params => params.data.itemStyle.color, opacity: params => params.data.itemStyle.opacity, borderColor: theme.pointBorder, borderWidth: 2, shadowBlur: 38, shadowColor: params => params.data.itemStyle.color }, zlevel: 2
           },
           {
@@ -521,10 +534,12 @@ export default {
       }
 
       if (!this.mapConfigured) {
+        // ═══ 首次渲染路径：完整初始化 geo 组件 ═══
         this.mapChart.setOption(mapOption, true)
         this.mapConfigured = true
         this.lastRegionSignature = regionSignature
       } else {
+        // ═══ 刷新路径：只合并 series，不触碰 geo → 保留 zoom/center ═══
         const update = {
           series: [
             { data: aggregatePoints },
@@ -541,6 +556,7 @@ export default {
       this.bindMapInteractions()
     },
 
+    // ═══ 地图交互绑定：click 下钻 + georoam 防抖 ═══
     bindMapInteractions() {
       this.mapChart.off('click')
       this.mapChart.on('click', params => {
@@ -568,12 +584,15 @@ export default {
       if (count >= 3) return this.mapTheme.levels[1].color
       return this.mapTheme.levels[0].color
     },
+
+    // ═══ 主题切换 ═══
     handleThemeChange() {
       this.themeMode = localStorage.getItem('rd-mode') || 'dark'
       this.mapConfigured = false
       this.lastRegionSignature = ''
       this.$nextTick(() => this.refreshRealtimeView())
     },
+
     pointLegendStyle(color) { return { background: color, boxShadow: `0 0 7px ${color}` } },
 
     riskClass(level) { return level === '极度危险' ? 'critical' : 'danger' },
