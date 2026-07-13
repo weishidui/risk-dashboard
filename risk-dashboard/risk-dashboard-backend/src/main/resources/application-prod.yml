@@ -1,0 +1,82 @@
+# ============================================================
+# 生产版本配置文件 (prod)
+# 特点：MySQL + Redis + Druid 连接池 + 性能优化
+# 启动命令: java -jar risk-dashboard.jar --spring.profiles.active=prod
+# ============================================================
+
+spring:
+  # ---- MySQL 数据库 ----
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.125.104:3306/risk_control?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    druid:
+      initial-size: 10
+      min-idle: 10
+      max-active: 50
+      max-wait: 60000
+      test-on-borrow: true
+      test-while-idle: true
+      validation-query: SELECT 1
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      # 监控配置
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: ${DRUID_PASSWORD:admin}
+      # 防火墙配置
+      filter:
+        wall:
+          enabled: true
+        stat:
+          enabled: true
+          log-slow-sql: true
+          slow-sql-millis: 2000
+
+  # 初始化SQL (生产环境仅首次启动使用)
+  sql:
+    init:
+      mode: never   # 生产环境下手动执行 schema.sql
+
+  # ---- Redis 配置 (存储用户画像缓存和实时数据) ----
+  redis:
+    host: 192.168.125.104
+    port: ${REDIS_PORT:6379}
+    password: 123456
+    database: 0
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 32
+        max-idle: 16
+        min-idle: 8
+        max-wait: 5000ms
+
+# 日志 (生产版减少日志量)
+logging:
+  level:
+    root: WARN
+    com.finance.risk.dashboard: INFO
+    com.finance.risk.dashboard.dao: WARN
+  file:
+    path: /var/log/risk-dashboard/
+    name: risk-dashboard.log
+    max-size: 100MB
+    max-history: 30
+
+# ---- 离线分析 HDFS 产物状态检查 ----
+risk:
+  offline:
+    hdfs:
+      base-path: /user/hive/warehouse/risk_control.db
+      java-home: /home/master0/jdk1.8.0_171
+      hadoop-home: /home/master0/hadoop-2.7.6
+      command-timeout-ms: 60000
+      ssh:
+        host: 192.168.125.100
+        port: 22
+        username: master0
+        password: 123456

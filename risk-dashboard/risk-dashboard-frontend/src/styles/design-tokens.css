@@ -1,0 +1,127 @@
+/* ============================================================
+   Design Tokens — Risk Dashboard
+   Production fintech: flat, dense, system fonts
+   ============================================================ */
+
+:root {
+  /* ---- Typography: system stack, no web fonts ---- */
+  --font-body: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+
+  /* Type Scale (compact) */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 15px;
+  --text-2xl: 16px;
+  --text-3xl: 18px;
+
+  /* ---- Background (flat, no gradient) ---- */
+  --color-bg-deep: #0C1524;
+  --color-bg-base: #0F1A2C;
+  --color-bg-elevated: #121E33;
+  --color-bg-surface: #162339;
+  --color-bg-hover: #1A2A45;
+
+  /* ---- Semantic Colors (muted, professional) ---- */
+  --color-primary: #4A90D9;
+  --color-primary-hover: #5DA0E5;
+  --color-primary-pressed: #3A7BC0;
+  --color-primary-bg: rgba(74, 144, 217, 0.10);
+
+  --color-success: #3C9D6E;
+  --color-success-bg: rgba(60, 157, 110, 0.10);
+  --color-warning: #D4952A;
+  --color-warning-bg: rgba(212, 149, 42, 0.10);
+  --color-danger: #D94A4A;
+  --color-danger-bg: rgba(217, 74, 74, 0.10);
+  --color-info: #7B8CAA;
+  --color-info-bg: rgba(123, 140, 170, 0.10);
+
+  /* ---- Text ---- */
+  --color-text-primary: #D8DFE8;
+  --color-text-secondary: #9AACBF;
+  --color-text-muted: #5D6F85;
+  --color-text-disabled: #3D4F65;
+
+  /* ---- Border ---- */
+  --color-border: #1C2B42;
+  --color-border-light: #253652;
+
+  /* ---- Spacing (compact) ---- */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-8: 24px;
+  --space-10: 32px;
+
+  /* ---- Radius (sharp) ---- */
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 3px;
+
+  /* ---- No decorative shadows ---- */
+
+  /* ---- Sidebar ---- */
+  --color-sidebar-bg: var(--color-bg-deep);
+  --color-sidebar-text: var(--color-text-secondary);
+  --color-sidebar-text-active: var(--color-primary);
+  --sidebar-width: 200px;
+
+  /* ---- Map Colors ---- */
+  --map-geo-fill: #162339;
+  --map-geo-border: #1C2B42;
+  --map-alert-fill: #2D1820;
+  --map-alert-border: #552830;
+  --map-tooltip-bg: #121E33;
+  --map-tooltip-text: #D8DFE8;
+  --map-overlay: rgba(15, 26, 44, 0.75);
+
+  /* ---- Chart Colors ---- */
+  --chart-1: #4A90D9;
+  --chart-2: #3C9D6E;
+  --chart-3: #D4952A;
+  --chart-4: #D94A4A;
+  --chart-5: #7B8CAA;
+  --chart-6: #4FA3B8;
+  --chart-7: #C07A3C;
+  --chart-8: #9A6DB0;
+}
+
+/* ===== Element UI Dropdown Themed Override ===== */
+.el-dropdown-menu {
+  background: var(--color-bg-elevated) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.15) !important;
+  padding: 6px 0 !important;
+}
+
+.el-dropdown-menu__item {
+  color: var(--color-text-secondary) !important;
+  font-size: 12px !important;
+  line-height: 36px !important;
+  padding: 0 18px !important;
+}
+
+.el-dropdown-menu__item:not(.is-disabled):hover {
+  background: var(--color-bg-surface) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.el-dropdown-menu__item.is-disabled {
+  color: var(--color-text-muted) !important;
+  opacity: 0.8;
+}
+
+.dd-divider {
+  height: 1px;
+  background: rgba(128,128,128,0.35);
+  margin: 4px 12px;
+  list-style: none;
+  pointer-events: none;
+}
