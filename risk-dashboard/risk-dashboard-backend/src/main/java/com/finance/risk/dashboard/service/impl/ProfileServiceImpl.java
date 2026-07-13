@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -91,6 +92,34 @@ public class ProfileServiceImpl implements ProfileService {
             log.error("用户画像缓存更新失败: userId={}, error={}",
                     profile.getUserId(), e.getMessage());
         }
+    }
+
+    @Override
+    public Map<String, Object> queryProfileList(String accountStatus, String riskLevel, int page, int pageSize) {
+        int offset = (page - 1) * pageSize;
+        List<UserProfile> list = userProfileDao.findListByFilter(accountStatus, riskLevel, offset, pageSize);
+        Long total = userProfileDao.countByFilter(accountStatus, riskLevel);
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list); result.put("total", total);
+        result.put("page", page); result.put("pageSize", pageSize);
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getProfileStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalUsers", userProfileDao.count());
+        List<UserProfileDao.StatusCount> scs = userProfileDao.countByStatus();
+        long normal = 0, frozen = 0, flagged = 0, dormant = 0;
+        for (UserProfileDao.StatusCount sc : scs) {
+            if ("normal".equals(sc.getAccountStatus())) normal = sc.getCnt();
+            else if ("frozen".equals(sc.getAccountStatus())) frozen = sc.getCnt();
+            else if ("flagged".equals(sc.getAccountStatus())) flagged = sc.getCnt();
+            else if ("dormant".equals(sc.getAccountStatus())) dormant = sc.getCnt();
+        }
+        stats.put("normal", normal); stats.put("frozen", frozen);
+        stats.put("flagged", flagged); stats.put("dormant", dormant);
+        return stats;
     }
 
     private UserProfile convertToEntity(ProfileInputDTO dto) {

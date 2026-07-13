@@ -47,6 +47,11 @@ public interface AlertDao {
                                @Param("offset") int offset,
                                @Param("limit") int limit);
 
+    @Select("SELECT * FROM risk_alert " +
+            "WHERE risk_level IN ('极度危险', '高危') OR final_score >= 80 " +
+            "ORDER BY create_time DESC LIMIT #{limit}")
+    List<AlertResult> findSevereList(@Param("limit") int limit);
+
     @Select("<script>" +
             "SELECT COUNT(*) FROM risk_alert WHERE 1=1 " +
             "<if test='riskLevel != null and riskLevel != \"\"'>AND risk_level = #{riskLevel}</if> " +

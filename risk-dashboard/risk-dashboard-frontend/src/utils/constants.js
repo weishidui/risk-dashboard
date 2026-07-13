@@ -40,11 +40,13 @@ export const ROLE_LABELS = {
   trader: '普通用户', analyst: '风控分析师', admin: '系统管理员', auditor: '审计员'
 }
 
+const OFFLINE_ROUTES = ['/offline-overview', '/profiles', '/high-risk-users', '/device-risk', '/counterparty-risk', '/transaction-stats', '/blacklist', '/chain']
+
 export const ROLE_ROUTES = {
   [ROLES.TRADER]:  [],
-  [ROLES.ANALYST]: ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis'],
-  [ROLES.ADMIN]:   ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis', '/config', '/users'],
-  [ROLES.AUDITOR]: ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis', '/config']
+  [ROLES.ANALYST]: ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis', ...OFFLINE_ROUTES],
+  [ROLES.ADMIN]:   ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis', '/config', '/users', ...OFFLINE_ROUTES],
+  [ROLES.AUDITOR]: ['/dashboard', '/transaction', '/alerts', '/risk-map', '/analysis', '/config', ...OFFLINE_ROUTES]
 }
 
 export const REFRESH_INTERVAL = 5000

@@ -75,4 +75,10 @@ public class AlertController {
             @ApiParam(value = "数量限制", defaultValue = "20") @RequestParam(defaultValue = "20") int limit) {
         return Result.ok(alertService.countHighRiskByCity(limit));
     }
+
+    @ApiOperation(value = "规则类别(A-I)分布", notes = "用于实时规则命中分析-类别饼图。")
+    @GetMapping("/stat/category")
+    public Result<List<Map<String, Object>>> statByCategory() {
+        return Result.ok(alertService.countByCategory());
+    }
 }

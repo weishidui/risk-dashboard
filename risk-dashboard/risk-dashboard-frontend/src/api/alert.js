@@ -29,3 +29,8 @@ export function getRuleTypeStat() {
 export function getCityRiskStat(limit = 20) {
   return request.get('/alert/stat/city-risk', { params: { limit } })
 }
+
+/** 规则类别(A-I)分布 */
+export function getCategoryStat() {
+  return request.get('/alert/stat/category')
+}

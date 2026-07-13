@@ -45,22 +45,28 @@
       </el-col>
     </el-row>
 
-    <!-- 城市活跃度 + 触发规则 -->
+    <!-- 城市活跃度 + 规则类别A-I -->
     <el-row :gutter="10" style="margin-top:10px;">
       <el-col :span="12">
         <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">城市活跃度 Top10</span>
-          </div>
+          <div class="panel-header"><span class="panel-title">城市活跃度 Top10</span></div>
           <div ref="cityBar" class="chart-box"></div>
         </div>
       </el-col>
       <el-col :span="12">
         <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">触发规则 Top8</span>
-          </div>
-          <div ref="ruleBar" class="chart-box"></div>
+          <div class="panel-header"><span class="panel-title">规则类别 A-I 分布</span></div>
+          <div ref="categoryPie" class="chart-box"></div>
+        </div>
+      </el-col>
+    </el-row>
+
+    <!-- 风险评分分布 -->
+    <el-row :gutter="10" style="margin-top:10px;">
+      <el-col :span="24">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">用户风险评分分布</span></div>
+          <div ref="scoreDistChart" class="chart-box-lg"></div>
         </div>
       </el-col>
     </el-row>
@@ -106,8 +112,9 @@
 
 <script>
 import * as echarts from 'echarts'
-import { getRiskLevelStat, getRuleTypeStat, getRecentAlerts } from '@/api/alert'
+import { getRiskLevelStat, getRuleTypeStat, getRecentAlerts, getCategoryStat } from '@/api/alert'
 import { getMetricsTrend, getDashboardData } from '@/api/metrics'
+import { getRiskDist } from '@/api/offline'
 import { REFRESH_INTERVAL, ACTION_MAP, CHART_COLORS } from '@/utils/constants'
 
 export default {
@@ -136,17 +143,19 @@ export default {
 
     async loadData() {
       try {
-        const [riskRes, ruleRes, trendRes, dashRes] = await Promise.all([
-          getRiskLevelStat(), getRuleTypeStat(), getMetricsTrend(24), getDashboardData()
+        const [riskRes, ruleRes, trendRes, dashRes, catRes, distRes] = await Promise.all([
+          getRiskLevelStat(), getRuleTypeStat(), getMetricsTrend(24), getDashboardData(),
+          getCategoryStat(), getRiskDist()
         ])
         this.$nextTick(() => {
           if (riskRes.code === 200) this.renderRiskPie(riskRes.data)
           if (ruleRes.code === 200) this.renderRulePie(ruleRes.data)
           if (trendRes.code === 200) this.renderTrend(trendRes.data)
+          if (catRes.code === 200) this.renderCategoryPie(catRes.data)
+          if (distRes.code === 200) this.renderScoreDist(distRes.data)
           if (dashRes.code === 200) {
             this.renderGauge(dashRes.data)
             this.renderCityBar(dashRes.data)
-            this.renderRuleBar(dashRes.data)
           }
         })
       } catch (e) { /* ignore */ }
@@ -345,47 +354,32 @@ export default {
       }, true)
     },
 
-    /* ========== Rule Bar ========== */
-    renderRuleBar(data) {
-      const el = this.$refs.ruleBar
-      if (!el) return
-      if (!this.charts.ruleBar) this.charts.ruleBar = echarts.init(el)
-      const d = (data.ruleTypeDistribution || []).slice(0, 8).reverse()
-
-      this.charts.ruleBar.setOption({
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: '#0F1A2C', borderColor: '#1C2B42',
-          textStyle: { color: '#D8DFE8', fontSize: 11 }
-        },
-        grid: { left: 55, right: 20, top: 4, bottom: 4 },
-        xAxis: {
-          type: 'value',
-          axisLine: { show: false },
-          axisLabel: { color: '#5D6F85', fontSize: 9 },
-          splitLine: { lineStyle: { color: '#1C2B42', type: 'dashed' } }
-        },
-        yAxis: {
-          type: 'category',
-          data: d.map(v => v.name),
-          axisLine: { show: false },
-          axisTick: { show: false },
-          axisLabel: { color: '#9AACBF', fontSize: 9 }
-        },
+    /* ========== Category Pie (A-I) ========== */
+    renderCategoryPie(data) {
+      const el = this.$refs.categoryPie
+      if (!el || !data.length) return
+      if (!this.charts.catPie) this.charts.catPie = echarts.init(el)
+      this.charts.catPie.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', backgroundColor: '#121E33', borderColor: '#1C2B42', textStyle: { color: '#D8DFE8', fontSize: 11 } },
         series: [{
-          type: 'bar',
-          data: d.map(v => ({
-            value: v.value,
-            itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                { offset: 0, color: '#F59E0B' },
-                { offset: 1, color: 'rgba(245,158,11,0.1)' }
-              ]),
-              borderRadius: [0, 2, 2, 0]
-            }
-          })),
-          barWidth: '55%'
+          type: 'pie', radius: ['45%', '70%'], center: ['50%', '52%'],
+          label: { color: '#5D6F85', fontSize: 10 },
+          data: data.map(d => ({ name: d.name, value: d.value, itemStyle: { color: d.color || '#909399' } }))
         }]
+      }, true)
+    },
+
+    /* ========== Score Distribution Bar ========== */
+    renderScoreDist(data) {
+      const el = this.$refs.scoreDistChart
+      if (!el || !data.length) return
+      if (!this.charts.scoreDist) this.charts.scoreDist = echarts.init(el)
+      this.charts.scoreDist.setOption({
+        tooltip: { trigger: 'axis', backgroundColor: '#121E33', borderColor: '#1C2B42', textStyle: { color: '#D8DFE8', fontSize: 11 } },
+        grid: { left: 55, right: 20, top: 10, bottom: 24 },
+        xAxis: { type: 'category', data: data.map(d => d.name), axisLabel: { color: '#5D6F85', fontSize: 10 }, axisLine: { lineStyle: { color: '#1C2B42' } } },
+        yAxis: { type: 'value', axisLabel: { color: '#5D6F85', fontSize: 10, formatter: v => v >= 10000 ? (v / 10000).toFixed(1) + '万' : v }, splitLine: { lineStyle: { color: '#1C2B42' } } },
+        series: [{ type: 'bar', data: data.map((d, i) => ({ value: d.value, itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length], borderRadius: [2, 2, 0, 0] } })), barWidth: '50%' }]
       }, true)
     },
 

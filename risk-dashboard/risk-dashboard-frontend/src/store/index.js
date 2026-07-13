@@ -43,6 +43,9 @@ export default new Vuex.Store({
       if (state.liveTransactions.length > 100) state.liveTransactions.pop()
     },
     ADD_LIVE_ALERT(state, alert) {
+      if (!isSevereAlert(alert)) return
+      const id = alert.alertId || alert.transId
+      if (id && state.liveAlerts.some(a => (a.alertId || a.transId) === id)) return
       state.liveAlerts.unshift(alert)
       if (state.liveAlerts.length > 50) state.liveAlerts.pop()
     },
@@ -91,3 +94,9 @@ export default new Vuex.Store({
     }
   }
 })
+
+function isSevereAlert(alert) {
+  if (!alert) return false
+  const level = (alert.riskLevel || '').trim()
+  return level === '高危' || level === '极度危险' || Number(alert.finalScore || 0) >= 80
+}

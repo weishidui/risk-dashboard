@@ -3,6 +3,7 @@ package com.finance.risk.dashboard.service;
 import com.finance.risk.dashboard.dto.MetricsInputDTO;
 import com.finance.risk.dashboard.entity.MetricsSnapshot;
 import com.finance.risk.dashboard.vo.DashboardVO;
+import com.finance.risk.dashboard.vo.RealtimeMetricsVO;
 
 import java.util.List;
 
@@ -26,6 +27,9 @@ public interface MetricsService {
      * 获取最新指标快照
      */
     MetricsSnapshot getLatestMetrics();
+
+    /** 获取 Redis 10 秒桶聚合的近 60 秒实时指标。 */
+    RealtimeMetricsVO getRealtimeMetrics();
 
     /**
      * 获取仪表盘首页综合数据 (聚合所有数据)
