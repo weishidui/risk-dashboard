@@ -533,26 +533,31 @@ export default {
         ]
       }
 
-      if (!this.mapConfigured) {
-        // ═══ 首次渲染路径：完整初始化 geo 组件 ═══
-        this.mapChart.setOption(mapOption, true)
-        this.mapConfigured = true
-        this.lastRegionSignature = regionSignature
-      } else {
+      const isRefresh = this.mapConfigured
+
+      if (isRefresh) {
         // ═══ 刷新路径：只合并 series，不触碰 geo → 保留 zoom/center ═══
-        const update = {
-          series: [
-            { data: aggregatePoints },
-            { data: livePoints },
-            { data: pulsePoints }
-          ]
-        }
+        // 三要素：notMerge=false + animation=false + 只传 series
+        const update = { animation: false }
         if (regionSignature !== this.lastRegionSignature) {
+          // region 颜色变了才传 geo.regions，notMerge=false 不会重置 zoom/center
           update.geo = { regions }
           this.lastRegionSignature = regionSignature
         }
+        update.series = [
+          { data: aggregatePoints },
+          { data: livePoints },
+          { data: pulsePoints }
+        ]
         this.mapChart.setOption(update, false)
+        return
       }
+
+      // ═══ 首次渲染路径：完整初始化 geo 组件 ═══
+      this.mapChart.setOption(mapOption, true)
+      this.mapConfigured = true
+      this.lastRegionSignature = regionSignature
+
       this.bindMapInteractions()
     },
 
@@ -644,3 +649,4 @@ export default {
 .mono-num { font-family: monospace; font-weight: 700; }
 @media (max-width: 900px) { .map-card { height: 430px; } .header-right { gap: 4px; } }
 </style>
+
