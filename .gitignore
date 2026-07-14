@@ -1,0 +1,14 @@
+# Local dependency and build outputs
+**/node_modules/
+**/target/
+**/.idea/
+**/*.iml
+
+# Runtime logs and process files
+**/logs/
+**/*.log
+**/*.pid
+
+# Operating system files
+Thumbs.db
+.DS_Store

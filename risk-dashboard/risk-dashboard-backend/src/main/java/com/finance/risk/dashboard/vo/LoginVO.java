@@ -1,0 +1,35 @@
+package com.finance.risk.dashboard.vo;
+
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@ApiModel(description = "登录响应")
+public class LoginVO implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    @ApiModelProperty(value = "JWT令牌")
+    private String token;
+
+    @ApiModelProperty(value = "用户信息")
+    private UserInfo user;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UserInfo implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String username;
+        private String role;
+    }
+}
